@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { renameSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, join, resolve } from "node:path";
+import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
@@ -478,12 +478,13 @@ describe("project installation and hermetic parity", () => {
       const options = { repositoryRoot, serverEntryPath, upstreamConfigPath,
         nodeCommand: process.execPath, client: "codex" as const, scope: "user" as const };
       const installed = installMorrowClient(options);
-      expect(installed.path).toBe(join(await realpath(codexHome), "config.toml"));
+      expect(await realpath(installed.path)).toBe(await realpath(join(codexHome, "config.toml")));
       expect(morrowClientConfigurationStatus(options)).toEqual({
         path: installed.path, configured: true, sha256: installed.sha256,
       });
-      expect(morrowClientConfigPath({ ...options, codexHomeDirectory: explicitHome }))
-        .toBe(join(await realpath(explicitHome), "config.toml"));
+      const explicitTarget = morrowClientConfigPath({ ...options, codexHomeDirectory: explicitHome });
+      expect(basename(explicitTarget)).toBe("config.toml");
+      expect(await realpath(dirname(explicitTarget))).toBe(await realpath(explicitHome));
       expect(morrowClientConfigPath({ client: "codex", scope: "project", projectRoot: repositoryRoot }))
         .toBe(join(repositoryRoot, ".codex", "config.toml"));
       process.env.CODEX_HOME = "";

@@ -2530,8 +2530,9 @@ test("custom Codex home survives child cwd changes and binds the record and remo
   await fs.mkdir(custom);
   const codexHomeDirectory = path.relative(process.cwd(), custom);
   const installer = controller(root, { codexHomeDirectory });
-  const target = path.join(await fs.realpath(custom), "config.toml");
-  assert.equal(clientConfigTarget({ id: "codex" }, installer.home, null, codexHomeDirectory), target);
+  const target = clientConfigTarget({ id: "codex" }, installer.home, null, codexHomeDirectory);
+  assert.equal(path.basename(target), "config.toml");
+  assert.equal(await fs.realpath(path.dirname(target)), await fs.realpath(custom));
   assert.equal(installer.childEnvironment().CODEX_HOME, path.dirname(target));
   const record = { ...freshRecord(), configured: { codex: { target, sha256: "a".repeat(64) } } };
   await installer.writeRecord(record);

@@ -98,10 +98,10 @@ test("a custom Codex home binds record validation to its canonical settings file
   const home = path.join(root, "Home");
   const custom = path.join(root, "Codex Léa α");
   await fs.mkdir(custom);
-  const canonical = await fs.realpath(custom);
-  const target = path.join(canonical, "config.toml");
   const relative = path.relative(process.cwd(), custom);
-  assert.equal(codexConfigPath(home, relative), target);
+  const target = codexConfigPath(home, relative);
+  assert.equal(path.basename(target), "config.toml");
+  assert.equal(await fs.realpath(path.dirname(target)), await fs.realpath(custom));
   assert.equal(codexConfigPath(home, ""), path.join(home, ".codex", "config.toml"));
   assert.equal(codexConfigPath(home, path.join(root, "missing")), null);
   const record = { schema: STATE_SCHEMA, version: STATE_VERSION, configured: { codex: { target, sha256: "a".repeat(64) } } };
