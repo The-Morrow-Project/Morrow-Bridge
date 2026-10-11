@@ -8,21 +8,22 @@ const test = require("node:test");
 
 const runnerPath = path.join(__dirname, "run-bounded-tests.cjs");
 
-test("the bounded suite runner applies --test-timeout to each test so a hung test cannot hold the suite budget", () => {
+test("the bounded suite runner applies --test-timeout to each test", () => {
   const runner = fs.readFileSync(runnerPath, "utf8");
   assert.match(runner, /const FILE_TIMEOUT_MS = process\.platform === "win32" \? 600_000 : 60_000;/);
   assert.match(runner, /const SUITE_TIMEOUT_MS = process\.platform === "win32" \? 900_000 : 300_000;/);
   assert.match(runner, /`--test-timeout=\$\{FILE_TIMEOUT_MS\}`/);
 });
 
-test("a hung test file is cancelled by --test-timeout instead of the suite process bound", async (t) => {
+test("--test-timeout cancels a hung test before the suite process bound", async (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "morrow-bounded-timeout-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const hung = path.join(directory, "hung.test.cjs");
   fs.writeFileSync(hung, `"use strict";
 const test = require("node:test");
-test("never settles", async () => {
-  for (;;) await new Promise((resolve) => setTimeout(resolve, 20));
+const { setTimeout: delay } = require("node:timers/promises");
+test("never settles", async (t) => {
+  for (;;) await delay(20, undefined, { signal: t.signal });
 });
 `);
   const { runOwnedProcess } = await import("../../scripts/lib/owned-process.mjs");
