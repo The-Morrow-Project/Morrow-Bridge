@@ -6,6 +6,7 @@ const test = require("node:test");
 const {
   STATE_SCHEMA,
   STATE_VERSION,
+  codexConfigPath,
   insideDirectory,
   inspectRecord,
   readPrivateRegularFile,
@@ -89,6 +90,27 @@ test("installer records admit only exact assistant identities, canonical paths, 
     } } },
   ];
   for (const value of invalid) assert.equal(inspectRecord(value, { homeDirectory: home }).reason, "record_invalid");
+});
+
+test("a custom Codex home binds record validation to its canonical settings file", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "morrow-state-codex-home-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const home = path.join(root, "Home");
+  const custom = path.join(root, "Codex Léa α");
+  await fs.mkdir(custom);
+  const relative = path.relative(process.cwd(), custom);
+  const target = codexConfigPath(home, relative);
+  assert.equal(path.basename(target), "config.toml");
+  assert.equal(await fs.realpath(path.dirname(target)), await fs.realpath(custom));
+  assert.equal(codexConfigPath(home, ""), path.join(home, ".codex", "config.toml"));
+  assert.equal(codexConfigPath(home, path.join(root, "missing")), null);
+  const record = { schema: STATE_SCHEMA, version: STATE_VERSION, configured: { codex: { target, sha256: "a".repeat(64) } } };
+  const options = { homeDirectory: home, codexHomeDirectory: relative };
+  assert.equal(inspectRecord(record, options).compatible, true);
+  assert.equal(inspectRecord(record, { ...options, codexHomeDirectory: "" }).compatible, false);
+  assert.equal(inspectRecord({ ...record, configured: { codex: { ...record.configured.codex,
+    target: path.join(root, "other", "config.toml"),
+  } } }, options).compatible, false);
 });
 
 test("the private regular-file reader bounds bytes and rejects non-files", async (t) => {

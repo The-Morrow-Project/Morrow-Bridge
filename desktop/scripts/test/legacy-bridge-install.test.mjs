@@ -20,7 +20,7 @@ async function worktreeFixture() {
   const extension = resolve(repository, 'extension');
   const worktree = resolve(directory, 'worktree');
   const catalogPath = resolve(directory, 'catalog.json');
-  await mkdir(extension, { recursive: true });
+  await mkdir(extension, { recursive: true, mode: 0o755 });
   await writeFile(resolve(extension, 'background.js'), BACKGROUND);
   git(repository, 'init', '--quiet');
   git(repository, 'config', 'user.email', 'morrow-test@example.test');
@@ -28,6 +28,7 @@ async function worktreeFixture() {
   git(repository, 'add', 'extension/background.js');
   git(repository, 'commit', '--quiet', '-m', 'fixture');
   git(repository, 'worktree', 'add', '--quiet', '-b', 'install-test', worktree, 'HEAD');
+  if (process.platform !== 'win32') await chmod(resolve(worktree, 'extension'), 0o755);
   const revision = git(worktree, 'rev-parse', 'HEAD');
   await writeFile(catalogPath, `${JSON.stringify({
     schema: 'morrow.source-catalog.v1',
@@ -60,7 +61,7 @@ test('legacy Bridge reinstall replaces a broadly readable bearer-token config wi
   const config = resolve(extension, 'morrow-gateway-bridge.local.js');
   const catalogPath = resolve(directory, 'catalog.json');
   try {
-    await mkdir(extension, { recursive: true });
+    await mkdir(extension, { recursive: true, mode: 0o755 });
     await writeFile(resolve(extension, 'background.js'), BACKGROUND);
     git(donor, 'init', '--quiet');
     git(donor, 'config', 'user.email', 'morrow-test@example.test');
@@ -147,6 +148,33 @@ test('legacy Bridge install preserves every destination when exclude admission f
       assert.equal((await stat(resolve(extension, filename))).mode, saved.mode);
     }
     assert.equal(await readFile(outsidePath, 'utf8'), 'preserve outside exclude\n');
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test('legacy Bridge install refuses a group-writable donor and preserves every destination', { skip: process.platform === 'win32' }, async () => {
+  const fixture = await worktreeFixture();
+  try {
+    const extension = resolve(fixture.worktree, 'extension');
+    const paths = [...LEGACY_BRIDGE_OVERLAY_FILES, 'morrow-gateway-bridge.local.js'];
+    for (const filename of paths) await writeFile(resolve(extension, filename), `preserve:${filename}\n`);
+    const before = new Map(await Promise.all(paths.map(async (filename) => [
+      filename,
+      { bytes: await readFile(resolve(extension, filename)), mode: (await stat(resolve(extension, filename))).mode },
+    ])));
+    const backgroundBefore = await readFile(resolve(extension, 'background.js'));
+    const excludeBefore = await readFile(fixture.excludePath);
+    await chmod(extension, 0o775);
+
+    assert.throws(() => install(fixture), (error) => /is not one exact private file/u.test(String(error.stderr)));
+    assert.deepEqual(await readFile(resolve(extension, 'background.js')), backgroundBefore);
+    assert.deepEqual(await readFile(fixture.excludePath), excludeBefore);
+    for (const [filename, saved] of before) {
+      assert.deepEqual(await readFile(resolve(extension, filename)), saved.bytes);
+      assert.equal((await stat(resolve(extension, filename))).mode, saved.mode);
+    }
+    assert.equal((await stat(extension)).mode & 0o777, 0o775);
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });
   }

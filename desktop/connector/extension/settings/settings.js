@@ -1140,19 +1140,74 @@ function syncCustomizeTriStates() {
   }
 }
 
+let renderedCustomizeSelection = null;
+let pendingCustomizeView = null;
+
+function replaceCustomizeHtml(html) {
+  const bindings = selectedBindings();
+  const selection = JSON.stringify(bindings.map((binding) => [binding.sourceBindingId, binding.provider,
+    binding.origin, binding.siteUrl, binding.principalFingerprint, binding.sessionGeneration, binding.courseId])
+    .sort(([left], [right]) => left.localeCompare(right)));
+  const sameSelection = selection === renderedCustomizeSelection;
+  const canRestore = sameSelection && state.mode === "edit" && bindings.length > 0 && !selectedBindingsNeedSite(bindings);
+  const active = document.activeElement;
+  const hadFocus = Boolean(active?.closest?.("#category-list"));
+  if (!canRestore) pendingCustomizeView = null;
+  let focusSelector = null;
+  if (canRestore && hadFocus) {
+    const id = active.getAttribute("id");
+    if (id) focusSelector = `[id=${JSON.stringify(id)}]`;
+    else {
+      for (const attribute of ["data-area-toggle", "data-kind-toggle"]) {
+        if (active.hasAttribute(attribute)) focusSelector = `[${attribute}=${JSON.stringify(active.getAttribute(attribute))}]`;
+      }
+      if (active.localName === "summary") {
+        const kind = active.closest(".customize-kind")?.dataset.kind;
+        focusSelector = kind ? `[data-kind=${JSON.stringify(kind)}] .customize-more summary` : ".review-only-line summary";
+      }
+    }
+  }
+  const view = pendingCustomizeView || {
+    focusSelector,
+    openKinds: canRestore ? new Set([...categoryList.querySelectorAll(".customize-more")]
+      .filter((details) => details.open).map((details) => details.closest(".customize-kind")?.dataset.kind)) : new Set(),
+    reviewOpen: canRestore && categoryList.querySelector(".review-only-line")?.open,
+  };
+  if (pendingCustomizeView && active !== actionFilter) view.focusSelector = focusSelector;
+  categoryList.innerHTML = html;
+  renderedCustomizeSelection = selection;
+  for (const details of categoryList.querySelectorAll(".customize-more")) {
+    if (view.openKinds.has(details.closest(".customize-kind")?.dataset.kind)) details.open = true;
+  }
+  if (view.reviewOpen) {
+    const review = categoryList.querySelector(".review-only-line");
+    if (review) review.open = true;
+  }
+  syncCustomizeTriStates();
+  const readingOptions = canRestore && bindings.some((binding) => !optionsFor(binding));
+  pendingCustomizeView = readingOptions ? view : null;
+  if (view.focusSelector) {
+    const target = categoryList.querySelector(view.focusSelector);
+    if (target && !target.disabled && !target.closest("[hidden]")) target.focus({ preventScroll: true });
+    else actionFilter.focus({ preventScroll: true });
+  } else if (hadFocus && !canRestore) {
+    (bindings.length && !selectedBindingsNeedSite(bindings) ? modeEdit : coursesTitle).focus({ preventScroll: true });
+  }
+}
+
 function renderCustomize() {
   const available = availableCategoriesForSelection();
   const hasSelectedCourses = selectedBindings().length > 0;
   if (!hasSelectedCourses) {
-    categoryList.innerHTML = '<p class="state-message">Select a course to read its available Edit and Review-only actions.</p>';
+    replaceCustomizeHtml('<p class="state-message">Select a course to read its available Edit and Review-only actions.</p>');
     return;
   }
   if (selectedBindingsNeedSite()) {
-    categoryList.innerHTML = '<p class="state-message">Open each selected course in Canvas or Moodle, then refresh this page before you choose Edit.</p>';
+    replaceCustomizeHtml('<p class="state-message">Open each selected course in Canvas or Moodle, then refresh this page before you choose Edit.</p>');
     return;
   }
   if (state.optionsLoading) {
-    categoryList.innerHTML = '<p class="state-message">Reading the current individual actions for the selected courses…</p>';
+    replaceCustomizeHtml('<p class="state-message">Reading the current individual actions for the selected courses…</p>');
     return;
   }
   // WI-5.5: search matches labels, hides areas with no match, and opens areas (and their kinds) with
@@ -1160,15 +1215,14 @@ function renderCustomize() {
   const filtering = Boolean(state.actionFilter.trim()) || state.actionCheckedOnly;
   const areas = AREA_ORDER.filter((areaId) => customizeAreaItems(areaId).length > 0);
   if (!areas.length) {
-    categoryList.innerHTML = `<p class="state-message">${state.actionFilter.trim()
+    replaceCustomizeHtml(`<p class="state-message">${state.actionFilter.trim()
       ? "No individual action matches this search."
       : state.actionCheckedOnly
         ? "The selected courses have no action Morrow can check after it is saved."
-        : "These courses share no Edit action. Select fewer courses, then choose Edit."}</p>`;
+        : "These courses share no Edit action. Select fewer courses, then choose Edit."}</p>`);
     return;
   }
-  categoryList.innerHTML = renderReviewOnlyLine() + areas.map((areaId) => renderArea(areaId, filtering, available)).join("");
-  syncCustomizeTriStates();
+  replaceCustomizeHtml(renderReviewOnlyLine() + areas.map((areaId) => renderArea(areaId, filtering, available)).join(""));
 }
 
 /** WI-1.1: the course is otherwise usable, but its saved Canvas or Moodle tab is not open. A saved
@@ -1906,11 +1960,22 @@ async function returnToPlan(bindings, { doneMessage } = {}) {
   clearError();
   clearNotice();
   let completed = 0;
+  const unconfirmed = [];
+  let firstFailure = null;
   try {
     for (const binding of bindings) {
-      const result = await request("morrow_edit_policy_revoke", { sourceBindingId: binding.sourceBindingId });
-      if (result?.revoked !== true) throw new Error("edit_policy_revoke_unconfirmed");
-      completed += 1;
+      try {
+        const result = await request("morrow_edit_policy_revoke", { sourceBindingId: binding.sourceBindingId });
+        if (result?.revoked !== true) throw new Error("edit_policy_revoke_unconfirmed");
+        completed += 1;
+      } catch (cause) {
+        unconfirmed.push(courseName(binding));
+        firstFailure ||= cause;
+      }
+    }
+    if (unconfirmed.length) {
+      showNotice(`${plural(completed, "course")} returned to Plan. Edit access removal was not confirmed for ${unconfirmed.join(", ")}.`);
+      throw firstFailure;
     }
     state.mode = "plan";
     state.selectedCategories.clear();

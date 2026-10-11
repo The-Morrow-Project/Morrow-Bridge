@@ -1462,7 +1462,19 @@ if [ -n "${VAULT_PROBLEM}" ]; then
   vault_warning
 fi
 note "Install complete. What is next for you:"
-note "  1. If CANVAS_BASE is still unset, set it in ${ENV_FILE} and rerun this installer."
-note "  2. Sign in once through the helper page (the notice above repeats until you are signed in)."
-note "  3. Operator check: PYTHONDONTWRITEBYTECODE=1 python3 dispatch/executor.py catalog --name users_self --method GET --path /api/v1/users/self --class read --backend chromium"
-note "  4. Educator path: in Muse, say \"Connect my Canvas account\" and follow the conversation (FIRST_RUN.md has the full checklist)."
+if [ "${LMS_PROVIDER}" = "moodle" ]; then
+  note "  1. If MOODLE_BASE is still unset, set it in ${ENV_FILE} and rerun this installer."
+  note "  2. Sign in through the private helper card (helper/MUSE-SETUP.md)."
+  if [ -n "${LMS_BASE}" ]; then
+    note "  3. Pair and verify the account: bin/morrow moodle pair --site ${LMS_BASE}"
+    note "     Then run: bin/morrow moodle status --site ${LMS_BASE}"
+  else
+    note "  3. After sign-in, pair and verify the account using moodle/SKILL.md."
+  fi
+  note "  Moodle remains a development candidate. Native first-use, production admission, and live provider proof remain release gates (SCOPE.md)."
+else
+  note "  1. If CANVAS_BASE is still unset, set it in ${ENV_FILE} and rerun this installer."
+  note "  2. Sign in once through the helper page (the notice above repeats until you are signed in)."
+  note "  3. Operator check: PYTHONDONTWRITEBYTECODE=1 python3 dispatch/executor.py catalog --name users_self --method GET --path /api/v1/users/self --class read --backend chromium"
+  note "  4. Educator path: in Muse, say \"Connect my Canvas account\" and follow the conversation (FIRST_RUN.md has the full checklist)."
+fi

@@ -101,10 +101,10 @@ class Tab:
             return ok([])
         if bare == "/api/v1/courses/101":
             return ok({"id": 101, "name": "Bio 101"})
-        if bare.endswith("/pages/week-1"):
+        if bare.endswith(("/pages/week-1", "/pages/page_id:7")):
             if method == "PUT":
                 raise AssertionError("the change was sent")
-            return ok({"url": "week-1", "title": "Old"})
+            return ok({"page_id": 7, "url": "week-1", "title": "Old"})
         raise AssertionError("unexpected call %s %s" % (method, path))
 
 

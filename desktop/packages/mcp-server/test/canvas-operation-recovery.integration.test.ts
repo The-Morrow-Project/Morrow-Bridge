@@ -97,6 +97,151 @@ async function waitUntil(predicate: () => boolean | Promise<boolean>, message: s
 }
 
 describe("Canvas unresolved-operation recovery", () => {
+  it("freezes a correction against the current binding and refuses a connection changed after review", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "morrow-canvas-correction-"));
+    const port = await availablePort();
+    const browserCatalogDigest = bridgeCatalogDigestForTests(ROOT);
+    const morrow = await MorrowRuntime.connect(connectorConfig(directory, port), {
+      statePath: join(directory, "gateway.sqlite3"),
+    });
+    const runtime = morrow.gateway;
+    let bridge: BridgeTestClient | undefined;
+    const editPermission = {
+      schema: "morrow.bridge.edit-permission.v1" as const,
+      revision: 1, scopeDigest: "d".repeat(64), catalogDigest: browserCatalogDigest,
+      sourceBindingId: SOURCE_BINDING_ID,
+      enabledCategories: ["action:canvas:canvas_edit_assignment"],
+      rules: [{
+        operationKey: "PUT /v1/courses/{course_id}/assignments/{id}#edit_assignment",
+        toolName: "canvas_edit_assignment", allowedChangedFields: ["assignment_name"],
+      }],
+    };
+    const binding = (sessionGeneration: number) => ({
+      sourceBindingId: SOURCE_BINDING_ID,
+      provider: "canvas" as const,
+      origin: "https://school.instructure.com",
+      courseId: "42",
+      principalFingerprint: "c".repeat(64),
+      sessionGeneration,
+      catalogDigest: browserCatalogDigest,
+      runtimeVerified: true,
+      ...(sessionGeneration > 1 ? {
+        editPolicyRevision: 1, editOptionsAvailable: true,
+        editPermission: {
+          schema: editPermission.schema, revision: editPermission.revision, scopeDigest: editPermission.scopeDigest,
+          catalogDigest: browserCatalogDigest, sourceBindingId: SOURCE_BINDING_ID,
+        },
+      } : {}),
+    });
+    const argumentsFor = (name: string) => ({
+      course_id: "42", id: "88", assignment_name: name,
+      _morrow: { source_binding_id: SOURCE_BINDING_ID },
+    });
+    let writes = 0;
+    let rosterReads = 0;
+    try {
+      bridge = await connectBridgeTestClient({
+        port, token: TOKEN, extensionId: EXTENSION_ID, catalogDigest: browserCatalogDigest,
+        bindings: [binding(1)],
+      });
+      bridge.onCommand((command) => {
+        if (command.kind === "edit_policy_options_get") {
+          bridge?.respond(command, {
+            schema: "morrow.bridge.edit-options.v1", sourceBindingId: SOURCE_BINDING_ID, provider: "canvas",
+            catalogDigest: browserCatalogDigest, policyRevision: 1, runtimeVerified: true,
+            options: [], editPermission,
+          });
+          return;
+        }
+        if (command.kind === "invoke_write") writes += 1;
+        const rosterRead = command.kind === "invoke_read" && command.toolName === "canvas_list_users_in_course_users";
+        if (rosterRead) rosterReads += 1;
+        const data = rosterRead
+          ? []
+          : { id: "88", name: command.kind === "invoke_write" ? command.arguments.assignment_name || "Original" : "Original" };
+        bridge?.respond(command, {
+          schema: "morrow.canvas-browser-result.v1", ok: true, sent: true, status: 200,
+          truncated: false,
+          data,
+          ...(command.kind === "invoke_write" ? {
+            verification: {
+              schema: "morrow.browser-verification.v1", status: "verified", strategy: "updated-resource",
+              readTool: "canvas_get_single_assignment", evidence: "fresh_readback_matches_requested_postcondition",
+            },
+          } : {}),
+        });
+      });
+      const emptyRoster = await runtime.callSourceOwned("canvas_list_users_in_course_users", {
+        course_id: "42", _morrow: { source_binding_id: SOURCE_BINDING_ID },
+      });
+      expect(emptyRoster.isError).not.toBe(true);
+      expect(structured(emptyRoster)).toMatchObject({
+        ok: true, commandKind: "invoke_read", result: { ok: true, data: [], truncated: false },
+      });
+      expect(rosterReads).toBe(1);
+      const original = await runtime.call("canvas_edit_assignment", argumentsFor("Changed"));
+      const originalId = operationId(original);
+      runtime.approveOperation(originalId);
+      expect(structured(await runtime.dispatchOperation(originalId))).toMatchObject({ effectState: "verified" });
+
+      bridge.updateBindings([binding(2)]);
+      await waitUntil(async () => {
+        const current = await runtime.callSourceOwned("morrow_browser_bindings", {});
+        return JSON.stringify(structured(current)).includes('"sessionGeneration":2');
+      }, "the fresh correction connection did not reach the connector");
+      expect(await runtime.editAuthorizationFor("canvas_edit_assignment", argumentsFor("Corrected")))
+        .toMatchObject({ kind: "edit_scope" });
+
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      const served = serveStdio(() => createFullMorrowServer(morrow), { transport: serverTransport });
+      const client = new Client({ name: "morrow-correction", version: "1" }, { versionNegotiation: { mode: { pin: "2026-07-28" } } });
+      let correction: JsonObject;
+      try {
+        await client.connect(clientTransport);
+        correction = await client.callTool({
+          name: "morrow_operation_undo",
+          arguments: {
+            operation_id: originalId, correction_tool: "canvas_edit_assignment",
+            correction_arguments: argumentsFor("Corrected"),
+          },
+        }) as JsonObject;
+        expect(correction.isError).not.toBe(true);
+      } finally {
+        await client.close();
+        await served.close();
+      }
+      const correctionId = operationId(correction);
+      expect(structured(correction)).toMatchObject({ phase: "correction_planned", effectState: "awaiting_approval" });
+      expect(runtime.effects.get(correctionId)).toMatchObject({
+        correctionOf: originalId,
+        plan: { authorization: { kind: "review" }, correctionOf: originalId },
+      });
+      expect(runtime.effects.get(correctionId).plan.authority.actorDigest)
+        .not.toBe(runtime.effects.get(originalId).plan.authority.actorDigest);
+      runtime.approveOperation(correctionId);
+      expect(structured(await runtime.dispatchOperation(correctionId))).toMatchObject({ effectState: "verified" });
+      expect(writes).toBe(2);
+
+      const changed = await runtime.undoOperation(correctionId, "canvas_edit_assignment", argumentsFor("Another correction"));
+      const changedId = operationId(changed);
+      bridge.updateBindings([binding(3)]);
+      await waitUntil(async () => {
+        const current = await runtime.callSourceOwned("morrow_browser_bindings", {});
+        return JSON.stringify(structured(current)).includes('"sessionGeneration":3');
+      }, "the changed correction connection did not reach the connector");
+      runtime.approveOperation(changedId);
+      expect(await runtime.dispatchOperation(changedId)).toMatchObject({
+        isError: true, structuredContent: { data: { code: "operation_dispatch_refused" } },
+      });
+      expect(runtime.effects.get(changedId)).toMatchObject({ state: "approved", dispatchAttempt: 0 });
+      expect(writes).toBe(2);
+    } finally {
+      await bridge?.close();
+      await morrow.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it("checks an unresolved Canvas change with its retained read-only comparator and never sends it again", async () => {
     const directory = mkdtempSync(join(tmpdir(), "morrow-canvas-recovery-"));
     const port = await availablePort();

@@ -50,7 +50,7 @@ function bridgeUpdateRefusal(error) {
   if (error?.code === "bridge_quiesce_busy") return errorDetails("active_or_uncertain_operations");
   return errorDetails(NAMED_MAINTENANCE_REFUSALS.has(error?.code) ? error.code : "bridge_update_failed");
 }
-const { DATA_REMOVAL_SCHEMA, freshRecord, insideDirectory, inspectRecord, readPrivateRegularFile, retentionSnapshot } = require("./state-policy.cjs");
+const { DATA_REMOVAL_SCHEMA, codexConfigPath, freshRecord, insideDirectory, inspectRecord, readPrivateRegularFile, retentionSnapshot } = require("./state-policy.cjs");
 const {
   bridgeInstallationStatus,
   compareChromeVersions,
@@ -454,9 +454,9 @@ function reportedError(error) {
   return typeof error?.code === "string" && typeof error?.recovery === "string" ? error : errorDetails("setup_failed");
 }
 
-function clientConfigTarget(assistant, home, project) {
+function clientConfigTarget(assistant, home, project, codexHomeDirectory) {
   switch (assistant.id) {
-    case "codex": return path.join(home, ".codex", "config.toml");
+    case "codex": return codexConfigPath(home, codexHomeDirectory);
     case "claude-code": return path.join(project, ".mcp.json");
     case "gemini-cli": return path.join(project, ".gemini", "settings.json");
     default: return null;
@@ -498,8 +498,8 @@ function provesConnection(proof, assistantId, entry, materials) {
     && proof.target === entry?.target && proof.sha256 === entry?.sha256 && Boolean(entry?.route);
 }
 
-function installerRecordDigest(record, home) {
-  const inspected = inspectRecord(record, { homeDirectory: home });
+function installerRecordDigest(record, home, codexHomeDirectory) {
+  const inspected = inspectRecord(record, { homeDirectory: home, codexHomeDirectory });
   if (!inspected.compatible) throw new Error(inspected.reason);
   return fileHash(Buffer.from(JSON.stringify(inspected.record), "utf8"));
 }
@@ -515,7 +515,7 @@ function recordWithoutAssistant(record, assistantId) {
   };
 }
 
-function inspectAssistantRemovalTombstone(value, home) {
+function inspectAssistantRemovalTombstone(value, home, codexHomeDirectory) {
   const keys = [
     "schema", "operationId", "assistantId", "target", "beforeSha256", "afterSha256",
     "recordBeforeSha256", "recordAfterSha256",
@@ -531,7 +531,7 @@ function inspectAssistantRemovalTombstone(value, home) {
     || typeof value.recordAfterSha256 !== "string" || !SHA256.test(value.recordAfterSha256)
     || value.recordBeforeSha256 === value.recordAfterSha256) return null;
   const assistant = ASSISTANTS.find((candidate) => candidate.id === value.assistantId);
-  if (!assistant || assistant.id === "claude-desktop" || !configuredProject(assistant, home, value.target)) return null;
+  if (!assistant || assistant.id === "claude-desktop" || !configuredProject(assistant, home, value.target, codexHomeDirectory)) return null;
   return {
     schema: value.schema,
     operationId: value.operationId,
@@ -601,12 +601,12 @@ function inspectClaudeGenerationTransition(value, stateDirectory, home) {
  * The candidate is confirmed by rebuilding the stored target from it, so a
  * record that does not describe this computer is refused instead of guessed.
  */
-function configuredProject(assistant, home, target) {
+function configuredProject(assistant, home, target, codexHomeDirectory) {
   if (typeof target !== "string" || !path.isAbsolute(target)) return null;
   const project = assistant.needsProject
     ? assistant.id === "claude-code" ? path.dirname(target) : path.dirname(path.dirname(target))
     : null;
-  return clientConfigTarget(assistant, home, project) === target ? { project } : null;
+  return clientConfigTarget(assistant, home, project, codexHomeDirectory) === target ? { project } : null;
 }
 
 /**
@@ -641,6 +641,7 @@ class InstallerController {
     this.userData = this.app.getPath("userData");
     this.paths = payloadLayout(deps.payloadRoot, this.userData);
     this.home = deps.homeDirectory;
+    this.codexHomeDirectory = deps.codexHomeDirectory ?? (this.testRoot ? "" : process.env.CODEX_HOME ?? "");
     this.recordPath = path.join(this.paths.state, "installer.json");
     this.assistantRemovalPath = path.join(this.paths.state, "assistant-removal.json");
     this.assistantConnectionPath = path.join(this.paths.state, "assistant-connections.json");
@@ -704,7 +705,7 @@ class InstallerController {
         trustedRoot: this.paths.state,
       });
       const parsed = parseStrictJson(content, "installer record");
-      const inspected = inspectRecord(parsed, { homeDirectory: this.home });
+      const inspected = inspectRecord(parsed, { homeDirectory: this.home, codexHomeDirectory: this.codexHomeDirectory });
       if (!inspected.compatible) throw new Error(inspected.reason);
       return inspected.record;
     } catch (error) {
@@ -760,13 +761,13 @@ class InstallerController {
     let parsed;
     try { parsed = parseStrictJson(content, "assistant removal recovery record"); }
     catch { throw new Error("assistant_removal_recovery_required"); }
-    const inspected = inspectAssistantRemovalTombstone(parsed, this.home);
+    const inspected = inspectAssistantRemovalTombstone(parsed, this.home, this.codexHomeDirectory);
     if (!inspected) throw new Error("assistant_removal_recovery_required");
     return inspected;
   }
 
   async writeAssistantRemovalTombstone(tombstone) {
-    const inspected = inspectAssistantRemovalTombstone(tombstone, this.home);
+    const inspected = inspectAssistantRemovalTombstone(tombstone, this.home, this.codexHomeDirectory);
     if (!inspected) throw new Error("assistant_removal_recovery_required");
     await this.ensureInstallerStateDirectory();
     if (await fs.lstat(this.assistantRemovalPath).then(() => true, (error) => {
@@ -906,7 +907,7 @@ class InstallerController {
   }
 
   async writeRecord(record) {
-    const inspected = inspectRecord({ ...freshRecord(), ...record }, { homeDirectory: this.home });
+    const inspected = inspectRecord({ ...freshRecord(), ...record }, { homeDirectory: this.home, codexHomeDirectory: this.codexHomeDirectory });
     if (!inspected.compatible) throw new Error(inspected.reason);
     await this.ensureInstallerStateDirectory();
     const temporary = `${this.recordPath}.tmp-${crypto.randomUUID()}`;
@@ -1333,7 +1334,7 @@ class InstallerController {
       const entry = configured[assistant.id];
       if (!entry) return [];
       if (assistant.id === "claude-desktop") return [{ assistant, entry, project: null }];
-      const located = configuredProject(assistant, this.home, entry.target);
+      const located = configuredProject(assistant, this.home, entry.target, this.codexHomeDirectory);
       if (!located) throw errorDetails("setup_failed");
       return [{ assistant, entry, project: located.project }];
     });
@@ -1707,6 +1708,12 @@ class InstallerController {
 
   childEnvironment() {
     const environment = { ...process.env };
+    if (this.codexHomeDirectory) {
+      const target = codexConfigPath(this.home, this.codexHomeDirectory);
+      if (target) environment.CODEX_HOME = path.dirname(target);
+    } else {
+      delete environment.CODEX_HOME;
+    }
     if (this.testRoot) {
       environment.HOME = this.home;
       environment.USERPROFILE = this.home;
@@ -1786,7 +1793,7 @@ class InstallerController {
         return prepared;
       }
 
-      const target = clientConfigTarget(assistant, this.home, project);
+      const target = clientConfigTarget(assistant, this.home, project, this.codexHomeDirectory);
       if (!target) throw errorDetails("setup_failed");
       await this.installClientConfiguration(assistant, target, project, materials);
       await this.forgetAssistantConnection(assistant.id);
@@ -1938,8 +1945,8 @@ class InstallerController {
       target,
       beforeSha256,
       afterSha256,
-      recordBeforeSha256: installerRecordDigest(recordBefore, this.home),
-      recordAfterSha256: installerRecordDigest(recordAfter, this.home),
+      recordBeforeSha256: installerRecordDigest(recordBefore, this.home, this.codexHomeDirectory),
+      recordAfterSha256: installerRecordDigest(recordAfter, this.home, this.codexHomeDirectory),
     });
     try {
       await this.writeAssistantConfiguration(target, next, beforeSha256);
@@ -2082,7 +2089,7 @@ class InstallerController {
     const assistant = ASSISTANTS.find((candidate) => candidate.id === tombstone.assistantId);
     if (!assistant || assistant.id === "claude-desktop") throw new Error("assistant_removal_recovery_required");
 
-    const recordSha256 = installerRecordDigest(record, this.home);
+    const recordSha256 = installerRecordDigest(record, this.home, this.codexHomeDirectory);
     // The record is committed only after the file was read back without
     // Morrow's entry. Whatever the assistant wrote into its file since is its own.
     if (recordSha256 === tombstone.recordAfterSha256) {
@@ -2098,7 +2105,7 @@ class InstallerController {
       throw new Error("assistant_removal_recovery_required");
     }
     const recordAfter = recordWithoutAssistant(record, assistant.id);
-    if (installerRecordDigest(recordAfter, this.home) !== tombstone.recordAfterSha256) {
+    if (installerRecordDigest(recordAfter, this.home, this.codexHomeDirectory) !== tombstone.recordAfterSha256) {
       throw new Error("assistant_removal_recovery_required");
     }
 
@@ -2125,7 +2132,7 @@ class InstallerController {
 
     await this.writeRecord(recordAfter);
     const committed = await this.readInstallerRecord();
-    if (installerRecordDigest(committed, this.home) !== tombstone.recordAfterSha256) {
+    if (installerRecordDigest(committed, this.home, this.codexHomeDirectory) !== tombstone.recordAfterSha256) {
       throw new Error("assistant_removal_recovery_required");
     }
     await this.clearAssistantRemovalTombstone(tombstone);
@@ -2196,14 +2203,14 @@ class InstallerController {
       .filter((candidate) => candidate !== preparedRoot && candidate !== preservedRoot);
     if (roots.length === 0) return null;
     const operationId = crypto.randomUUID();
-    const sameRecord = installerRecordDigest(recordBefore, this.home) === installerRecordDigest(recordAfter, this.home);
+    const sameRecord = installerRecordDigest(recordBefore, this.home, this.codexHomeDirectory) === installerRecordDigest(recordAfter, this.home, this.codexHomeDirectory);
     const mode = preparedEntry ? "replace" : sameRecord ? "prune" : "remove";
     const transition = await this.writeClaudeGenerationTransition({
       schema: CLAUDE_GENERATION_TRANSITION_SCHEMA,
       operationId,
       mode,
-      recordBeforeSha256: installerRecordDigest(recordBefore, this.home),
-      recordAfterSha256: installerRecordDigest(recordAfter, this.home),
+      recordBeforeSha256: installerRecordDigest(recordBefore, this.home, this.codexHomeDirectory),
+      recordAfterSha256: installerRecordDigest(recordAfter, this.home, this.codexHomeDirectory),
       preparedEntry,
       moves: roots.map((source, index) => ({
         source,
@@ -2237,7 +2244,7 @@ class InstallerController {
     const transition = pending === undefined ? await this.readClaudeGenerationTransition() : pending;
     if (!transition) return "none";
     const record = await this.readInstallerRecord();
-    const currentSha256 = installerRecordDigest(record, this.home);
+    const currentSha256 = installerRecordDigest(record, this.home, this.codexHomeDirectory);
     if (transition.mode === "prune") {
       if (currentSha256 !== transition.recordBeforeSha256) throw new Error("claude_generation_recovery_required");
       await this.finishClaudeGenerationTransition(transition);
@@ -2261,7 +2268,7 @@ class InstallerController {
       throw error;
     }
     try {
-      if (installerRecordDigest(recordBefore, this.home) !== installerRecordDigest(recordAfter, this.home)) {
+      if (installerRecordDigest(recordBefore, this.home, this.codexHomeDirectory) !== installerRecordDigest(recordAfter, this.home, this.codexHomeDirectory)) {
         await this.writeRecord(recordAfter);
       }
     } catch (error) {
@@ -2647,7 +2654,7 @@ class InstallerController {
       const recorded = salvaged?.configured?.[assistant.id]?.target;
       if (typeof recorded === "string" && path.isAbsolute(recorded)) candidates.push(recorded);
       if (!assistant.needsProject) {
-        const fixed = clientConfigTarget(assistant, this.home, null);
+        const fixed = clientConfigTarget(assistant, this.home, null, this.codexHomeDirectory);
         if (typeof fixed === "string" && !candidates.includes(fixed)) candidates.push(fixed);
       }
       for (const target of candidates) {
@@ -2681,7 +2688,7 @@ class InstallerController {
     for (const assistant of ASSISTANTS) {
       const entry = configured[assistant.id];
       if (!entry || assistant.id === "claude-desktop") continue;
-      const located = configuredProject(assistant, this.home, entry.target);
+      const located = configuredProject(assistant, this.home, entry.target, this.codexHomeDirectory);
       if (!located) continue;
       // Setup names a project folder that is gone and offers Remove; the other assistants are still repaired.
       if (located.project && !await projectFolderPresent(located.project)) continue;
@@ -2798,9 +2805,10 @@ class InstallerController {
       this.dataRemoval = { schema: DATA_REMOVAL_SCHEMA, status: "cancelled", removed: [], remaining: removable.map((location) => location.path), kept: keptPaths };
       return this.dataRemoval;
     }
-    const stoppedGuard = await this.stopRuntimeForDataRemoval(guard);
-    this.dataRemovalGuard = stoppedGuard;
+    let stoppedGuard = guard;
     try {
+      stoppedGuard = await this.stopRuntimeForDataRemoval(guard);
+      this.dataRemovalGuard = stoppedGuard;
       // An assistant keeps starting the Morrow its settings name, so Morrow's
       // entries go first. A removal that cannot take one out stops here, before
       // anything else is removed, and names that file.
@@ -3304,7 +3312,7 @@ class InstallerController {
     const content = await readConfigurationFile(entry.target);
     if (content === null) return false;
     if (fileHash(content) === entry.sha256) return true;
-    const located = configuredProject(assistant, this.home, entry.target);
+    const located = configuredProject(assistant, this.home, entry.target, this.codexHomeDirectory);
     if (!located || !materials) return false;
     try {
       const module = await this.clientConfigModule();
@@ -3319,6 +3327,7 @@ class InstallerController {
         serverEntryPath: this.paths.server,
         workspaceRoot: materials,
         serverName: MORROW_SERVER_NAME,
+        codexHomeDirectory: this.codexHomeDirectory,
         ...(entry.route ? { route: entry.route } : {})
       });
       return status?.path === entry.target && status.configured === true;
@@ -3447,7 +3456,7 @@ class InstallerController {
         : null;
       const present = claude ? claude.installed === true : await this.assistantConfigurationPresent(assistant, entry, materials).catch(() => unavailable(false));
       const moved = !claude && present !== true && await this.assistantEntryMoved(assistant, entry);
-      const projectFolder = entry && assistant.needsProject ? configuredProject(assistant, this.home, entry.target)?.project ?? null : null;
+      const projectFolder = entry && assistant.needsProject ? configuredProject(assistant, this.home, entry.target, this.codexHomeDirectory)?.project ?? null : null;
       const detected = await this.detectedAssistant(assistant).catch(() => unavailable(false));
       return {
         moved,

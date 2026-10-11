@@ -232,11 +232,36 @@ export function newQuizEffectWriteSchema(inputSchema: JsonSchema): JsonObject {
   };
 }
 
+function boundedCanvasRateNumber(value: unknown): number | undefined {
+  const number = typeof value === "string" && value.length <= 64
+    && /^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/u.test(value.trim())
+    ? Number(value)
+    : value;
+  return typeof number === "number" && Number.isFinite(number) && number >= 0 && number <= 1_000_000
+    ? number : undefined;
+}
+
+function canvasResponseRate(value: JsonObject): JsonObject | undefined {
+  if (value.schema !== "morrow.canvas-connector.result.v1" || value.provider !== "canvas"
+    || !["invoke_read", "invoke_write"].includes(String(value.commandKind)) || !isJsonObject(value.result)
+    || value.result.schema !== "morrow.canvas-browser-result.v1") return undefined;
+  const requestCost = boundedCanvasRateNumber(value.result.requestCost);
+  const rateLimitRemaining = boundedCanvasRateNumber(value.result.rateLimitRemaining);
+  if (requestCost === undefined && rateLimitRemaining === undefined) return undefined;
+  return {
+    schema: "morrow.canvas-rate.v1",
+    ...(requestCost === undefined ? {} : { requestCost }),
+    ...(rateLimitRemaining === undefined ? {} : { rateLimitRemaining }),
+  };
+}
+
 function toolResult(value: JsonObject) {
   const ok = value.ok !== false;
+  const rate = canvasResponseRate(value);
   return {
     content: [{ type: "text" as const, text: canvasConnectorSummary(value) }],
     structuredContent: value,
+    ...(rate ? { _meta: { "io.morrow/canvas-rate": rate } } : {}),
     ...(!ok ? { isError: true } : {}),
   };
 }

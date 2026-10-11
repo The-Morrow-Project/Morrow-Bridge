@@ -171,6 +171,15 @@ class DomElement {
     else this.removeAttribute("hidden");
   }
 
+  get open() {
+    return this.hasAttribute("open");
+  }
+
+  set open(value) {
+    if (value) this.setAttribute("open", "");
+    else this.removeAttribute("open");
+  }
+
   get disabled() {
     return this.hasAttribute("disabled");
   }
@@ -207,7 +216,7 @@ class DomElement {
   }
 
   set textContent(value) {
-    this.childNodes = [];
+    this.removeChildren();
     if (String(value) !== "") this.append(new DomText(String(value)));
   }
 
@@ -216,8 +225,19 @@ class DomElement {
   }
 
   set innerHTML(html) {
-    this.childNodes = [];
+    this.removeChildren();
     for (const node of parseNodes(String(html), this.ownerDocument)) this.append(node);
+  }
+
+  removeChildren() {
+    for (let active = this.ownerDocument?.activeElement; active && active !== this; active = active.parentNode) {
+      if (active.parentNode === this) {
+        this.ownerDocument.activeElement = this.ownerDocument.querySelector("body");
+        break;
+      }
+    }
+    for (const node of this.childNodes) node.parentNode = null;
+    this.childNodes = [];
   }
 
   toHtml() {
@@ -494,6 +514,7 @@ function createChromeStub({ handlers = {}, storage = {}, permission = {}, tabs =
   const permissionCalls = [];
   const tabsCreated = [];
   const tabsUpdated = [];
+  const windowsUpdated = [];
   let optionsPageOpens = 0;
   let runtimeReloads = 0;
   let nextTabId = 9000;
@@ -547,11 +568,10 @@ function createChromeStub({ handlers = {}, storage = {}, permission = {}, tabs =
       onRemoved: { addListener: (listener) => listeners.permissionRemoved.push(listener) },
     },
     tabs: {
-      // A plain string `url` is the WI-2.4 review-tab lookup: an exact match against the open
-      // tabs this test gave the page, the same as Chrome matching one literal address. Any other
-      // query (for example the active-tab probe) keeps its full, unfiltered answer.
       async query(queryInfo = {}) {
-        return typeof queryInfo.url === "string" ? tabs.filter((tab) => tab.url === queryInfo.url) : tabs;
+        if (typeof queryInfo.url !== "string") return tabs;
+        const pattern = new RegExp(`^${queryInfo.url.split("*").map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+        return tabs.filter((tab) => pattern.test(String(tab.url || "").split("#")[0]));
       },
       async create(properties = {}) {
         tabsCreated.push(properties);
@@ -567,8 +587,14 @@ function createChromeStub({ handlers = {}, storage = {}, permission = {}, tabs =
         return tab;
       },
     },
+    windows: {
+      async update(windowId, properties = {}) {
+        windowsUpdated.push({ windowId, properties });
+        return { id: windowId, ...properties };
+      },
+    },
   };
-  return { chrome, messages, permissionCalls, tabsCreated, tabsUpdated, storage: stored, listeners, optionsPageOpens: () => optionsPageOpens, runtimeReloads: () => runtimeReloads };
+  return { chrome, messages, permissionCalls, tabsCreated, tabsUpdated, windowsUpdated, storage: stored, listeners, optionsPageOpens: () => optionsPageOpens, runtimeReloads: () => runtimeReloads };
 }
 
 // --- Loading a page ---------------------------------------------------------------------------
@@ -627,6 +653,7 @@ export async function loadExtensionPage(pagePath, options = {}) {
     permissionCalls: stub.permissionCalls,
     tabsCreated: stub.tabsCreated,
     tabsUpdated: stub.tabsUpdated,
+    windowsUpdated: stub.windowsUpdated,
     listeners: stub.listeners,
     /** How many times the page has opened Plan and Edit settings. */
     get optionsPageOpens() {

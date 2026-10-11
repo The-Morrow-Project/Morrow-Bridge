@@ -333,7 +333,7 @@ test("the published downloads stay separate from the current checkout version", 
   assert.ok(readme.includes(`This checkout carries Morrow Desktop ${version}.`));
   assert.ok(limitations.includes(`This checkout contains Morrow Desktop \`${version}\` for Mac with Apple silicon and Windows x64`));
   assert.ok(limitations.includes(`Until Morrow Desktop \`${version}\` is published, public installers remain on Morrow Desktop \`1.0.14\``));
-  assert.ok(changelog.includes(`## ${version} (2026-10-08)`));
+  assert.ok(changelog.includes(`## ${version} (2026-10-11)`));
   assert.match(changelog, /^# Changelog Release notes for Morrow Desktop\..*## 1\.0\.14 \(2026-10-07\).*## 1\.0\.13 \(2026-10-03\).*## 1\.0\.11 \(2026-10-02\)/);
   const bridgeVersion = JSON.parse(read("connector/extension/manifest.json")).version;
   assert.ok(readme.includes(`This checkout contains Morrow Desktop ${version} with Morrow Bridge ${bridgeVersion}`));

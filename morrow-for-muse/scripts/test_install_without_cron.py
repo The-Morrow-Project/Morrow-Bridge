@@ -22,7 +22,8 @@ gate reads the tree.
 
 End to end: the real install.sh from a carved tree, a PATH with no
 crontab, a scratch HOME and MORROW_HOME. No helper starts (CANVAS_BASE
-stays unset). Scratch lives under .selftest-work/ and dist/ (never
+stays unset); a stand-in proxy config avoids a direct LMS address probe.
+Scratch lives under .selftest-work/ and dist/ (never
 /tmp). Slow: each install runs the secrets gate and the 23 suites.
 Linux only, like the Muse VM: the helper suites read /proc and use
 flock.
@@ -101,7 +102,9 @@ def rig():
     os.makedirs(home)
     env = {"PATH": bindir, "HOME": home,
            "MORROW_HOME": os.path.join(home, ".morrow"),
-           "CHROMIUM_BIN": chrome, "LANG": "C.UTF-8"}
+           "CHROMIUM_BIN": chrome, "LANG": "C.UTF-8",
+           "MORROW_INSTALL_TEST_SHOW_SELFTEST_FAILURES": "1",
+           "https_proxy": "http://127.0.0.1:9"}
     rig = {"tree": out, "env": env, "home": env["MORROW_HOME"]}
     try:
         yield rig
@@ -120,8 +123,6 @@ def _install(rig):
                           cwd=rig["tree"], env=rig["env"],
                           capture_output=True, text=True, timeout=1800)
     out = proc.stdout + proc.stderr
-    if "INSTALL FAIL [egress]" in out:
-        pytest.skip("this machine has no network egress: %s" % out[-400:])
     return proc.returncode, out
 
 

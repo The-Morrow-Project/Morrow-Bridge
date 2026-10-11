@@ -9,7 +9,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const { pathToFileURL } = require("node:url");
-const { bridgeDeliveryMode, createInstallerController, readCommandOutput, readMacApplicationBundleIdentifier, runBoundedCommand } = require("../shared/installer-controller.cjs");
+const { bridgeDeliveryMode, clientConfigTarget, createInstallerController, readCommandOutput, readMacApplicationBundleIdentifier, runBoundedCommand } = require("../shared/installer-controller.cjs");
 const { freshRecord } = require("../shared/state-policy.cjs");
 const { claudeDesktopLauncherPath } = require("../shared/claude-desktop.cjs");
 const { errorDetails } = require("../shared/contract.cjs");
@@ -2220,7 +2220,8 @@ test("assistant status keeps an exact Morrow entry configured after unrelated cl
       : path.join(root, "Payload", "runtime", "node", "bin", "node"),
     serverEntryPath: path.join(root, "Payload", "app", "packages", "mcp-server", "dist", "index.js"),
     workspaceRoot: materials,
-    serverName: "morrow"
+    serverName: "morrow",
+    codexHomeDirectory: ""
   });
 });
 
@@ -2460,6 +2461,90 @@ test("a data removal holds a stopped-runtime guard across its confirmation", asy
   assert.deepEqual(globalThis.__morrowStoppedGuardCalls, ["acquire", "release"]);
   assert.equal(await fs.lstat(paths.state).then(() => true, () => false), true);
   delete globalThis.__morrowStoppedGuardCalls;
+});
+
+test("a failed data removal commit releases its owner guard and permits a confirmed retry", async () => {
+  const root = await temporaryRoot();
+  const installer = controller(root);
+  await fs.mkdir(installer.paths.state, { recursive: true });
+  const retained = path.join(installer.paths.state, "retained.txt");
+  await fs.writeFile(retained, "keep until confirmed");
+  const actions = [];
+  let failCommit = true;
+  const monitor = {
+    maintenance: async ({ action }) => {
+      actions.push(action);
+      return { status: action === "release" ? "released" : failCommit ? "unavailable" : "closing" };
+    },
+    close: async () => {},
+  };
+  installer.record = async () => freshRecord();
+  installer.retention = async () => ({ locations: [{ path: installer.paths.state, removable: true }] });
+  installer.bridgeLoadedInChrome = async () => false;
+  installer.confirmDataRemoval = async () => true;
+  installer.acquireDataRemovalGuard = async () => {
+    installer.runtimeMonitor = monitor;
+    installer.restartLeases.set("owned-lease", monitor);
+    return { kind: "owner", leaseId: "owned-lease", module: {
+      replaceDeadLocalOwnerMaintenanceLeaseWithStoppedGuard: () => ({ leaseId: "stopped-lease", leaseToken: "stopped-token" }),
+    } };
+  };
+
+  await assert.rejects(() => installer.removeData(null), /restart lease commit is unconfirmed/);
+  assert.deepEqual(actions, ["commit", "release"]);
+  assert.equal(installer.dataRemovalGuard, null);
+  assert.equal(installer.restartLeases.size, 0);
+  assert.equal(installer.maintenanceAdmission(), null);
+  assert.equal(await fs.readFile(retained, "utf8"), "keep until confirmed");
+
+  failCommit = false;
+  assert.equal((await installer.removeData(null)).status, "removed");
+  assert.equal(await fs.lstat(installer.paths.state).then(() => true, () => false), false);
+});
+
+test("a failed data removal commit stays fenced when owner release is unconfirmed", async () => {
+  const root = await temporaryRoot();
+  const installer = controller(root);
+  await fs.mkdir(installer.paths.state, { recursive: true });
+  installer.record = async () => freshRecord();
+  installer.retention = async () => ({ locations: [] });
+  installer.bridgeLoadedInChrome = async () => false;
+  installer.confirmDataRemoval = async () => true;
+  const actions = [];
+  const monitor = { maintenance: async ({ action }) => { actions.push(action); return { status: "unavailable" }; } };
+  installer.acquireDataRemovalGuard = async () => {
+    installer.restartLeases.set("owned-lease", monitor);
+    return { kind: "owner", leaseId: "owned-lease" };
+  };
+
+  await assert.rejects(() => installer.removeData(null), /restart lease commit is unconfirmed/);
+  assert.deepEqual(actions, ["commit", "release"]);
+  assert.equal(installer.dataRemovalGuard.kind, "owner");
+  assert.equal(installer.restartLeases.size, 1);
+  await assert.rejects(() => installer.removeData(null), (error) => error.code === "active_or_uncertain_operations");
+});
+
+test("custom Codex home survives child cwd changes and binds the record and removal recovery", async () => {
+  const root = await temporaryRoot();
+  const custom = path.join(root, "Codex Léa α");
+  await fs.mkdir(custom);
+  const codexHomeDirectory = path.relative(process.cwd(), custom);
+  const installer = controller(root, { codexHomeDirectory });
+  const target = clientConfigTarget({ id: "codex" }, installer.home, null, codexHomeDirectory);
+  assert.equal(path.basename(target), "config.toml");
+  assert.equal(await fs.realpath(path.dirname(target)), await fs.realpath(custom));
+  assert.equal(installer.childEnvironment().CODEX_HOME, path.dirname(target));
+  const record = { ...freshRecord(), configured: { codex: { target, sha256: "a".repeat(64) } } };
+  await installer.writeRecord(record);
+  assert.deepEqual(await installer.readInstallerRecord(), record);
+  assert.equal(installer.assistantBindings(record)[0].entry.target, target);
+  const tombstone = {
+    schema: "morrow.assistant-removal.v1", operationId: crypto.randomUUID(), assistantId: "codex", target,
+    beforeSha256: "a".repeat(64), afterSha256: "b".repeat(64),
+    recordBeforeSha256: "c".repeat(64), recordAfterSha256: "d".repeat(64),
+  };
+  await installer.writeAssistantRemovalTombstone(tombstone);
+  assert.deepEqual(await installer.readAssistantRemovalTombstone(), tombstone);
 });
 
 test("a data removal refuses to start while another operation holds the runtime", async () => {

@@ -1,10 +1,12 @@
 import { existsSync } from "node:fs";
+import { getEventListeners } from "node:events";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { StdioMcpUpstream, UpstreamNotDispatchedError } from "../src/index.js";
+import { StdioMcpUpstream, UpstreamNotDispatchedError, type StdioUpstreamLaunch } from "../src/index.js";
+import { StrictStdioClientTransport } from "../src/strict-stdio.js";
 
 const fixturePath = fileURLToPath(new URL("./fixtures/fake-upstream.mjs", import.meta.url));
 const duplicateFixturePath = fileURLToPath(new URL("./fixtures/raw-duplicate-tools-upstream.mjs", import.meta.url));
@@ -324,6 +326,183 @@ describe("StdioMcpUpstream", () => {
     await expect(upstream.callTool("fake_tool_1", {}, { timeoutMs: 25 })).rejects.toThrow(/timed out/i);
     await expect(upstream.callTool("fake_tool_1", { value: "bounded" }, { timeoutMs: 1_000 }))
       .resolves.toMatchObject({ structuredContent: { name: "fake_tool_1", value: "bounded" } });
+  });
+
+  it("refuses a pre-aborted safe read before reconnect preparation or child launch", async () => {
+    const prepareLaunch = vi.fn((launch: StdioUpstreamLaunch) => ({ launch }));
+    const beforeConnect = vi.fn();
+    const upstream = tracked(new StdioMcpUpstream({
+      id: "fixture", label: "Fixture upstream", command: process.execPath, args: [fixturePath],
+      beforeConnect, prepareLaunch,
+    }));
+    const controller = new AbortController();
+    const reason = new Error("safe read already cancelled");
+    controller.abort(reason);
+    await expect(within(upstream.callTool("fake_tool_1", {}, {
+      safeToRetry: true, signal: controller.signal, timeoutMs: 10,
+    }), 1_000)).rejects.toBe(reason);
+    expect(beforeConnect).not.toHaveBeenCalled();
+    expect(prepareLaunch).not.toHaveBeenCalled();
+    expect(upstream.health().connectionGeneration).toBe(0);
+    expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+  });
+
+  it.each(["cancellation", "timeout"] as const)("bounds a disconnected safe read during held preparation by %s", async (kind) => {
+    const directory = await tempDirectory();
+    try {
+      const marker = join(directory, "cancelled-launch");
+      const statePrefix = join(directory, "state");
+      let releasePreparation!: () => void;
+      const preparation = new Promise<void>((resolve) => { releasePreparation = resolve; });
+      let preparing!: () => void;
+      const startedPreparing = new Promise<void>((resolve) => { preparing = resolve; });
+      let preparedLaunches = 0;
+      const upstream = tracked(new StdioMcpUpstream({
+        id: "fixture", label: "Fixture upstream", command: process.execPath, args: [fixturePath],
+        env: { FAKE_TOOL_COUNT: "1", FAKE_STATE_PREFIX: statePrefix },
+        supervision: { initialBackoffMs: 1, maxBackoffMs: 1 },
+        prepareLaunch: async (launch) => {
+          if (++preparedLaunches === 1) {
+            preparing();
+            await preparation;
+            return { launch: { ...launch, env: { ...launch.env, FAKE_FAIL_STARTUP_MARKER: marker } } };
+          }
+          return { launch };
+        },
+      }));
+      const controller = new AbortController();
+      const read = upstream.callTool("fake_tool_1", {}, {
+        safeToRetry: true, signal: controller.signal, timeoutMs: kind === "timeout" ? 10 : 1_000,
+      });
+      const refused = expect(within(read, 1_000)).rejects.toThrow(kind === "timeout" ? /timed out/i : "safe read cancelled during preparation");
+      await within(startedPreparing, 1_000);
+      if (kind === "cancellation") controller.abort(new Error("safe read cancelled during preparation"));
+      await refused;
+      expect(upstream.health().connectionGeneration).toBe(0);
+      expect(existsSync(marker)).toBe(false);
+      expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+
+      releasePreparation();
+      await expect(upstream.callTool("fake_tool_1", { value: "fresh read" }, { safeToRetry: true, timeoutMs: 1_000 }))
+        .resolves.toMatchObject({ structuredContent: { value: "fresh read" } });
+      expect(preparedLaunches).toBe(2);
+      expect(upstream.health().connectionGeneration).toBe(1);
+      expect(existsSync(marker)).toBe(false);
+      expect((await readFile(`${statePrefix}.calls`, "utf8")).trim().split("\n")).toEqual(["fake_tool_1"]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.each(["cancellation", "timeout"] as const)("bounds a safe-read retry during held reconnect preparation by %s", async (kind) => {
+    const directory = await tempDirectory();
+    const started = vi.spyOn(StrictStdioClientTransport.prototype, "start");
+    try {
+      const statePrefix = join(directory, "state");
+      let releasePreparation!: () => void;
+      const preparation = new Promise<void>((resolve) => { releasePreparation = resolve; });
+      let preparing!: () => void;
+      const startedPreparing = new Promise<void>((resolve) => { preparing = resolve; });
+      let preparedLaunches = 0;
+      const upstream = tracked(new StdioMcpUpstream({
+        id: "fixture", label: "Fixture upstream", command: process.execPath, args: [fixturePath],
+        env: { FAKE_TOOL_COUNT: "1", FAKE_STATE_PREFIX: statePrefix, FAKE_CRASH_TOOL: "fake_tool_1" },
+        prepareLaunch: async (launch) => {
+          if (++preparedLaunches === 2) {
+            preparing();
+            await preparation;
+          }
+          return { launch };
+        },
+      }));
+      await upstream.connect();
+      const controller = new AbortController();
+      const read = upstream.callTool("fake_tool_1", {}, {
+        safeToRetry: true, signal: controller.signal, timeoutMs: kind === "timeout" ? 250 : 2_000,
+      });
+      const refused = expect(within(read, 1_000)).rejects.toThrow(kind === "timeout" ? /timed out/i : "safe-read retry cancelled during preparation");
+      await within(startedPreparing, 1_000);
+      if (kind === "cancellation") controller.abort(new Error("safe-read retry cancelled during preparation"));
+      await refused;
+      expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+      releasePreparation();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(started).toHaveBeenCalledTimes(1);
+      expect(preparedLaunches).toBe(2);
+      expect(upstream.health().connectionGeneration).toBe(1);
+      expect((await readFile(`${statePrefix}.calls`, "utf8")).trim().split("\n")).toEqual(["fake_tool_1"]);
+    } finally {
+      started.mockRestore();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("bounds a safe read that joins another caller's preparation without cancelling that connection", async () => {
+    const directory = await tempDirectory();
+    try {
+      const statePrefix = join(directory, "state");
+      let releasePreparation!: () => void;
+      const preparation = new Promise<void>((resolve) => { releasePreparation = resolve; });
+      let preparing!: () => void;
+      const startedPreparing = new Promise<void>((resolve) => { preparing = resolve; });
+      const upstream = tracked(new StdioMcpUpstream({
+        id: "fixture", label: "Fixture upstream", command: process.execPath, args: [fixturePath],
+        env: { FAKE_TOOL_COUNT: "1", FAKE_STATE_PREFIX: statePrefix },
+        prepareLaunch: async (launch) => { preparing(); await preparation; return { launch }; },
+      }));
+      const connecting = upstream.connect();
+      await startedPreparing;
+      await expect(within(upstream.callTool("fake_tool_1", {}, { safeToRetry: true, timeoutMs: 10 }), 1_000))
+        .rejects.toThrow(/timed out/i);
+      releasePreparation();
+      await connecting;
+      expect(upstream.health().connectionGeneration).toBe(1);
+      expect(existsSync(`${statePrefix}.calls`)).toBe(false);
+      await expect(upstream.callTool("fake_tool_1", { value: "healthy" }, { timeoutMs: 1_000 }))
+        .resolves.toMatchObject({ structuredContent: { value: "healthy" } });
+      expect((await readFile(`${statePrefix}.calls`, "utf8")).trim().split("\n")).toEqual(["fake_tool_1"]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("completes a disconnected safe read and removes its cancellation listener", async () => {
+    const upstream = tracked(new StdioMcpUpstream({
+      id: "fixture", label: "Fixture upstream", command: process.execPath, args: [fixturePath],
+      env: { FAKE_TOOL_COUNT: "1" },
+    }));
+    const controller = new AbortController();
+    await expect(upstream.callTool("fake_tool_1", { value: "bounded" }, {
+      safeToRetry: true, signal: controller.signal, timeoutMs: 1_000,
+    })).resolves.toMatchObject({ structuredContent: { value: "bounded" } });
+    expect(upstream.health().connectionGeneration).toBe(1);
+    expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+    controller.abort();
+    expect(upstream.health().connected).toBe(true);
+  });
+
+  it.each([
+    { connected: false, safeToRetry: true, label: "does not reconnect twice when a disconnected safe read crashes" },
+    { connected: true, safeToRetry: false, label: "never retries an effect call after a connection loss" },
+  ])("$label", async ({ connected, safeToRetry }) => {
+    const directory = await tempDirectory();
+    try {
+      const statePrefix = join(directory, "state");
+      const prepareLaunch = vi.fn((launch: StdioUpstreamLaunch) => ({ launch }));
+      const upstream = tracked(new StdioMcpUpstream({
+        id: "fixture", label: "Fixture upstream", command: process.execPath, args: [fixturePath],
+        env: { FAKE_TOOL_COUNT: "1", FAKE_STATE_PREFIX: statePrefix, FAKE_CRASH_TOOL: "fake_tool_1" },
+        prepareLaunch,
+      }));
+      if (connected) await upstream.connect();
+      const read = upstream.callTool("fake_tool_1", {}, { safeToRetry, timeoutMs: 1_000 });
+      await expect(read).rejects.toThrow();
+      expect(prepareLaunch).toHaveBeenCalledTimes(1);
+      expect(upstream.health().connectionGeneration).toBe(1);
+      expect((await readFile(`${statePrefix}.calls`, "utf8")).trim().split("\n")).toEqual(["fake_tool_1"]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("refuses a call to a disconnected upstream when the caller has not opted into a retry", async () => {

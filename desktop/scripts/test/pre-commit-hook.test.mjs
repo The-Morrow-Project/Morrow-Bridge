@@ -140,8 +140,10 @@ function repository(t) {
   mkdirSync(join(work, ".github", "workflows"), { recursive: true });
   writeFileSync(join(work, "desktop", ".githooks", "pre-commit"), readFileSync(hook));
   chmodSync(join(work, "desktop", ".githooks", "pre-commit"), 0o755);
+  const environment = { ...process.env, PATH: `${bin}:${process.env.PATH}` };
+  delete environment.MORROW_MUSE_PYTHON;
   const git = (...args2) => {
-    const run = spawnSync("git", args2, { cwd: work, encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+    const run = spawnSync("git", args2, { cwd: work, encoding: "utf8", env: environment });
     return run;
   };
   assert.equal(git("init", "-q").status, 0);
@@ -157,7 +159,7 @@ function repository(t) {
     writeFileSync(join(work, path), `${Date.now()}-${Math.random()}\n`);
     git("add", path);
     const run = spawnSync("git", ["commit", "-q", "-m", `change ${path}`], {
-      cwd: work, encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, STUB_STATUS: String(status) },
+      cwd: work, encoding: "utf8", env: { ...environment, STUB_STATUS: String(status) },
     });
     let calls = [];
     try { calls = readFileSync(log, "utf8").trim().split("\n").filter(Boolean); } catch {}

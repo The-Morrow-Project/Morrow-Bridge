@@ -329,13 +329,20 @@ export class BlackboardLearnClient {
     init: RequestInit,
     signal?: AbortSignal,
     retryUnauthorized = true,
+    pinnedToken?: TokenRecord,
   ): Promise<Response> {
     const origin = new URL(this.tenant.baseUrl).origin;
     if (url.origin !== origin || url.username || url.password) {
       throw new ApiError("blackboard_scope_binding_mismatch", "Blackboard request origin does not match this configured tenant.");
     }
     const send = async (): Promise<Response> => {
-      const token = await this.accessToken(signal);
+      const token = pinnedToken ?? await this.accessToken(signal);
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(String(init.method || "GET").toUpperCase())) {
+        const principal = await this.principalForToken(token, signal);
+        if (principal.state !== "verified") {
+          throw new ApiError("blackboard_principal_unverified", `Morrow did not confirm which Blackboard account this server credential acts as, so it changed nothing in this course. ${principal.detail}`);
+        }
+      }
       this.requests += 1;
       return this.fetcher(url, {
         ...init,
@@ -536,16 +543,30 @@ export class BlackboardLearnClient {
    */
   async resolveAuthenticatedPrincipal(signal?: AbortSignal): Promise<BlackboardPrincipalResolution> {
     const token = await this.accessToken(signal);
+    try {
+      return await this.principalForToken(token, signal);
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
+      if (this.token === token) this.token = undefined;
+      return this.principalForToken(await this.accessToken(signal), signal);
+    }
+  }
+
+  private async principalForToken(token: TokenRecord, signal?: AbortSignal): Promise<BlackboardPrincipalResolution> {
     if (this.principal && this.principal.token === token) return this.principal.resolution;
-    const resolution = await this.readAuthenticatedPrincipal(signal);
+    const resolution = await this.readAuthenticatedPrincipal(token, signal);
     this.principal = { token, resolution };
     return resolution;
   }
 
-  private async readAuthenticatedPrincipal(signal?: AbortSignal): Promise<BlackboardPrincipalResolution> {
+  private async readAuthenticatedPrincipal(token: TokenRecord, signal?: AbortSignal): Promise<BlackboardPrincipalResolution> {
     let payload: JsonObject;
     try {
-      payload = await this.requestRecord(new URL(AUTHENTICATED_PRINCIPAL_PATH, this.tenant.baseUrl), { method: "GET" }, signal);
+      const response = await this.response(new URL(AUTHENTICATED_PRINCIPAL_PATH, this.tenant.baseUrl), { method: "GET" }, signal, false, token);
+      if (!ACCEPTED_STATUS.has(response.status)) throw responseError(response, this.diagnosticHeaders);
+      const record = await jsonResponse(response, signal);
+      if (!record) throw new ApiError("blackboard_response_invalid", "Blackboard answered this read without a record.");
+      payload = record;
     } catch (error) {
       if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
         return { state: "unresolved", detail: `Blackboard answered the account read with HTTP ${error.status}.` };

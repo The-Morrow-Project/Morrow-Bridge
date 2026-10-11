@@ -328,12 +328,13 @@ export function registerOperationTools(
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     },
-    async ({ operation_id, correction_tool, correction_arguments }) => {
+    async ({ operation_id, correction_tool, correction_arguments }, context) => {
       try {
-        return runtime.undoOperation(
+        return await runtime.undoOperation(
           operation_id,
           correction_tool,
           correction_arguments as JsonObject,
+          { signal: context.mcpReq.signal },
         ) as unknown as CallToolResult;
       } catch (error) {
         return failure(operation_id, "create a correction for", error);

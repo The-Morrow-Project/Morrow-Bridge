@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const fsConstants = require("node:fs").constants;
+const fsSync = require("node:fs");
 const path = require("node:path");
 
 const STATE_SCHEMA = "morrow.desktop-state.v1";
@@ -31,11 +32,21 @@ function canonicalAbsolutePath(value) {
     && !value.includes("\0") && path.isAbsolute(value) && path.normalize(value) === value;
 }
 
+function codexConfigPath(homeDirectory, codexHomeDirectory = process.env.CODEX_HOME) {
+  if (codexHomeDirectory) {
+    try {
+      const root = fsSync.realpathSync(codexHomeDirectory);
+      return fsSync.statSync(root).isDirectory() ? path.join(root, "config.toml") : null;
+    } catch { return null; }
+  }
+  return path.join(homeDirectory, ".codex", "config.toml");
+}
+
 function configuredTarget(assistantId, target, options) {
   if (!canonicalAbsolutePath(target)) return false;
   if (assistantId === "codex") {
     return !canonicalAbsolutePath(options.homeDirectory)
-      || target === path.join(options.homeDirectory, ".codex", "config.toml");
+      || target === codexConfigPath(options.homeDirectory, options.codexHomeDirectory);
   }
   if (assistantId === "claude-code") return path.basename(target) === ".mcp.json";
   if (assistantId === "gemini-cli") {
@@ -304,6 +315,7 @@ module.exports = {
   REMOVAL_STATUSES,
   CONFIGURED_ASSISTANT_IDS,
   freshRecord,
+  codexConfigPath,
   insideDirectory,
   inspectRecord,
   readPrivateRegularFile,

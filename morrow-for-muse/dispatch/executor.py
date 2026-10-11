@@ -140,6 +140,7 @@ from dispatch.admission import (  # noqa: E402
     request_subject as admission_request_subject,
     request_digest as admission_request_digest,
     write_target_course_id as admission_write_target_course_id,
+    resolved_policy_entry as admission_policy_entry,
     _render_path as admission_render_path,
 )
 from config.paths import morrow_home, read_tree_uuid  # noqa: E402
@@ -7946,7 +7947,7 @@ def _render_dry_run(entry, params, session, pack, plan, op_id,
                       "detail": "dry-run: no provider calls; the fresh-read "
                                 "comparison would run after the claim, before "
                                 "any write"})
-        publish_target = _new_quiz_publish_target(entry)
+        publish_target = _new_quiz_publish_target(entry, params)
         if publish_target:
             gates.append({"gate": "new_quiz_publish_check",
                           "result": "skipped",
@@ -8639,6 +8640,8 @@ def _dispatch_entry_inner(entry: dict, params: dict, session: SessionStore,
         # point, and no lane can project without the encrypted vault
         # ('cryptography'), so those keep refusing learner-bearing entries.
         vault_ready=_learner_vault_ready(session))
+    if is_write and not dry_run:
+        _refuse_new_quiz_assignment_delete(entry, params, session, pack)
     # Course content can name any student: read the course roster (and
     # refuse the course when it cannot be read) before anything in the
     # course is read, changed, or restored from labels.
@@ -9587,6 +9590,7 @@ def _catalog_provenance_gate(entry: dict, name: str, method: str,
     Every refusal is journaled under its own refusal event id.
     """
     policy = load_policy()
+    policy_entry = admission_policy_entry(entry, params)
     absolute = (
         ("never_dispatch", check_never_dispatch),
         ("unsupported", check_unsupported),
@@ -9597,7 +9601,7 @@ def _catalog_provenance_gate(entry: dict, name: str, method: str,
     )
     for label, check in absolute:
         try:
-            check(entry, policy)
+            check(policy_entry, policy)
         except Exception as exc:  # the checks raise AdmissionRefused
             # subclasses, which are not ExecutorErrors; journal the refusal
             # under its own event id and re-raise unchanged.
@@ -10008,7 +10012,7 @@ def _dispatch_undo_inner(entry: dict, params: dict, result_payload, of_op_id: st
         tenant_base = None
     _check_auxiliary_learner_data(entry, vault_ready=False)
     # The forward entry's own policy gates still apply to its undo.
-    check_policy_gates(entry)
+    check_policy_gates(entry, params=params)
     # The undo target comes ONLY from the original op's journaled
     # receipt; a caller payload that disagrees is refused.
     result_payload = journaled_undo_result(entry, params, of_op_id,
@@ -10491,7 +10495,7 @@ def _object_title(payload):
 def _read_named_object(entry, params, session, pack, tenant_base,
                        project=True, stage="prepared"):
     """The object a write names, read before the educator approves it:
-    {"object_slot", "object_name", "object_name_digest"}, or None when
+    {"object_slot", "object_name", "object_name_digest", "object_id"}, or None when
     the path names no object Canvas serves by GET. object_name is
     labeled like course content (project=True), so a student named in a
     title reaches the agent as a label; it is None for an object with
@@ -10539,7 +10543,19 @@ def _read_named_object(entry, params, session, pack, tenant_base,
                 "educator means." % (what, "was not found" if missing
                                      else "could not be read", exc.status,
                                      stage))
-        title = _object_title(_parse_provider_json(raw, "%s read" % what))
+        payload = _parse_provider_json(raw, "%s read" % what)
+        _check_new_quiz_assignment_delete(entry, payload)
+        is_page = bool(_PAGE_PUT_RE.search(urllib.parse.urlsplit(rurl).path))
+        object_id = payload.get("page_id") if is_page else payload.get("id")
+        if is_page and (isinstance(object_id, bool) or not
+                        _COURSE_NUMBER_RE.fullmatch(str(object_id))):
+            raise TargetIdentityMismatch(
+                "the page read from Canvas has no valid page_id, so its "
+                "identity cannot be bound to the approval. Nothing was %s."
+                % stage)
+        if object_id is None and isinstance(payload.get("bank"), dict):
+            object_id = payload["bank"].get("id")
+        title = _object_title(payload)
         shown = title
         if project and title:
             view = {"name": entry.get("name"),
@@ -10552,9 +10568,12 @@ def _read_named_object(entry, params, session, pack, tenant_base,
                 error_cls=ExecutorError)["receipt"]["name"]
     finally:
         _wire.end_course_rosters(rosters)
-    return {"object_slot": slot, "object_name": shown,
-            "object_name_digest": hashlib.sha256(
-                (title or "").encode("utf-8")).hexdigest()}
+    target = {"object_slot": slot, "object_name": shown,
+              "object_name_digest": hashlib.sha256(
+                  (title or "").encode("utf-8")).hexdigest()}
+    if object_id is not None:
+        target["object_id"] = str(object_id)
+    return target
 
 
 # Routes that can publish a New Quiz without naming one: the assignment
@@ -10568,11 +10587,11 @@ _PUBLISH_TARGETS = {
 }
 
 
-def _new_quiz_publish_target(entry):
+def _new_quiz_publish_target(entry, params=None):
     """"assignment" or "module item" when the write sets published on a
     route whose target can be a New Quiz, else None."""
     from dispatch.admission import _field_values, _flag_is_false, _route_key
-    request = (entry or {}).get("request") or {}
+    request = admission_policy_entry(entry, params).get("request") or {}
     kind = _PUBLISH_TARGETS.get(_route_key(request.get("method"),
                                            request.get("url")))
     if kind is None:
@@ -10596,7 +10615,8 @@ def _is_new_quiz_assignment(doc):
         and ".quiz-lti" in str(url or "").lower()
 
 
-def _read_publish_target(entry, url_template, params, session, pack, what):
+def _read_publish_target(entry, url_template, params, session, pack, what,
+                         action="publishing it"):
     read_entry = dict(entry, effects="read",
                       request={"method": "GET", "url": url_template,
                                "headers": {}})
@@ -10611,16 +10631,16 @@ def _read_publish_target(entry, url_template, params, session, pack, what):
     except (ProviderHttpError, TargetIdentityMismatch) as exc:
         raise WriteNotAttempted(
             "the %s could not be read (%s), so Morrow could not check that "
-            "it is not a New Quiz before publishing it. Nothing was sent."
+            "it is not a New Quiz before %s. Nothing was sent."
             % (what, "HTTP %s" % exc.status
-               if isinstance(exc, ProviderHttpError) else exc))
+               if isinstance(exc, ProviderHttpError) else exc, action))
 
 
 def _refuse_new_quiz_publish(entry, params, session, pack):
     """Refuse (EvidenceHold) a write that publishes a New Quiz through its
     assignment or module item. Reads the target first; a target Morrow
     cannot read is not published (WriteNotAttempted)."""
-    kind = _new_quiz_publish_target(entry)
+    kind = _new_quiz_publish_target(entry, params)
     if kind is None:
         return
     from reauth import state_machine as _rsm
@@ -10646,6 +10666,34 @@ def _refuse_new_quiz_publish(entry, params, session, pack):
             "operation %r publishes a New Quiz (the %s is one), which was "
             "never tested; refused on every tenant until a live battery "
             "proves it. Nothing was sent." % (entry.get("name"), kind))
+
+
+def _assignment_delete(entry):
+    from dispatch.admission import _route_key
+    request = (entry or {}).get("request") or {}
+    return _route_key(request.get("method"), request.get("url")) == (
+        "DELETE", "/api/v1/courses/{}/assignments/{}")
+
+
+def _check_new_quiz_assignment_delete(entry, assignment):
+    if _assignment_delete(entry) and _is_new_quiz_assignment(assignment):
+        raise NewQuizRefused(
+            "refusing to delete a New Quiz through the assignment endpoint "
+            "(it orphans the quiz backend object); the quiz API route is "
+            "the only delete path. Nothing was sent.")
+
+
+def _refuse_new_quiz_assignment_delete(entry, params, session, pack):
+    """Read the assignment type before a delete can orphan a New Quiz."""
+    if not _assignment_delete(entry):
+        return
+    from reauth import state_machine as _rsm
+    if not _rsm.check_write_allowed()[0]:
+        return
+    assignment = _read_publish_target(
+        entry, entry["request"]["url"].split("?", 1)[0], params,
+        session, pack, "assignment", action="deleting it")
+    _check_new_quiz_assignment_delete(entry, assignment)
 
 
 def _educator_time_zone(user_id, course_zone):
@@ -10725,7 +10773,7 @@ def prepare_plan_write(name: str, method: str, path_template: str,
     _catalog_provenance_gate(entry, name, method, path_template, params,
                              session=session)
     check_policy_gates(entry, bool(getattr(session, "browser_owned_auth",
-                                           False)))
+                                           False)), params=params)
     _refuse_new_quiz_publish(entry, params, session, pack)
     tenant_base = session.base_for(provider or "canvas")
     course_id = _write_target_course_id(entry, params)
@@ -10737,6 +10785,17 @@ def prepare_plan_write(name: str, method: str, path_template: str,
     named = _read_named_object(entry, params, session, pack, tenant_base)
     if named is not None:
         target = dict(target or {}, **named)
+        if named.get("object_slot") == "url_or_id" \
+                and named.get("object_id") is not None:
+            # A numeric slug wins over an ID in Canvas; this form binds
+            # the approved request to the page itself, even if its slug changes.
+            params["url_or_id"] = "page_id:%s" % named["object_id"]
+            bound, learner_tokens = _wire.bind_learner_labels(
+                {"params": params, "body": body}, tenant_base, course_id,
+                conversation_id, error_cls=LearnerLabelUnresolved,
+                provider=provider,
+                extra_keys=_wire.learner_route_param_keys(entry))
+            params, body = dict(bound["params"]), bound["body"]
     op_id = str(uuid.uuid4())
     subject = admission_request_subject(entry, params)
     if learner_tokens:
@@ -10832,7 +10891,9 @@ def _recheck_named_object(descriptor, target, session, pack):
     seen = _read_named_object(entry, descriptor.get("params") or {},
                               session, pack, session.base_for(provider),
                               project=False, stage="sent")
-    if seen is None or seen["object_name_digest"] != expected:
+    if seen is None or seen["object_name_digest"] != expected \
+            or ((target or {}).get("object_id") is not None
+                and seen.get("object_id") != target["object_id"]):
         raise TargetIdentityMismatch(
             "the object this change names was renamed or replaced in "
             "Canvas after the educator approved it by name. Nothing was "
@@ -10918,7 +10979,8 @@ def _approve_plan_write(op_id, authorization, session, pack, mode_ctx,
                 descriptor.get("name"), descriptor.get("method"),
                 descriptor.get("path"), None,
                 descriptor.get("provider") or "canvas", None,
-                {"body": body} if body is not None else None)):
+                {"body": body} if body is not None else None),
+                descriptor.get("params") or {}):
         ctx["destructive_confirmed"] = authorization
     try:
         out = dispatch_catalog_op(

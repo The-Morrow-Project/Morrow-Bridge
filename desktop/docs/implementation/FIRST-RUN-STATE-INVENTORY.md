@@ -596,22 +596,22 @@ stale name here.
 | `Refresh connected courses` | Plan and Edit settings | `connector/extension/settings/settings.html:35` |
 | `Open Canvas or Moodle when Morrow needs it.` | Plan and Edit settings | `connector/extension/settings/settings.html:148` |
 | `Select` | Plan and Edit settings | `connector/extension/settings/settings.html:50` |
-| `Connect` | Plan and Edit settings | `connector/extension/settings/settings.js:1252` |
+| `Connect` | Plan and Edit settings | `connector/extension/settings/settings.js:1306` |
 | `Show more` | Plan and Edit settings | `connector/extension/settings/settings.html:57` |
 | `Load more available courses` | Plan and Edit settings | `connector/extension/settings/settings.html:60` |
 | `Plan. Ask first.` | Plan and Edit settings | `connector/extension/settings/settings.html:65` |
 | `Edit. Routine edits.` | Plan and Edit settings | `connector/extension/settings/settings.html:66` |
-| `Enable course file access` | Plan and Edit settings | `connector/extension/settings/settings.html:161`, `connector/extension/settings/settings.js:1577` |
-| `Turn on course file access` | Plan and Edit settings | `connector/extension/settings/settings.js:1577` |
+| `Enable course file access` | Plan and Edit settings | `connector/extension/settings/settings.html:161`, `connector/extension/settings/settings.js:1631` |
+| `Turn on course file access` | Plan and Edit settings | `connector/extension/settings/settings.js:1631` |
 | `Remove HTTPS file access` | Plan and Edit settings | `connector/extension/settings/settings.html:162` |
 | `Return selected courses to Plan` | Plan and Edit settings | `connector/extension/settings/settings.html:121` |
 | `Save Edit access` | Plan and Edit settings | `connector/extension/settings/settings.html:122`, `connector/extension/settings/settings.js:880` |
-| `Review and save` | Plan and Edit settings (WI-5.5 Customize view summary bar) | `connector/extension/settings/settings.js:1551` |
+| `Review and save` | Plan and Edit settings (WI-5.5 Customize view summary bar) | `connector/extension/settings/settings.js:1605` |
 | `Keep reviewing` | Plan and Edit settings | `connector/extension/settings/settings.html:131` |
 | `Save Edit access anyway` | Plan and Edit settings | `connector/extension/settings/settings.html:132` |
 | `Open Canvas` | Plan and Edit settings | `connector/extension/settings/settings.js:446` |
 | `Open Moodle` | Plan and Edit settings | `connector/extension/settings/settings.js:447` |
-| `Withdraw consent` | Plan and Edit settings | `connector/extension/settings/settings.js:1721` |
+| `Withdraw consent` | Plan and Edit settings | `connector/extension/settings/settings.js:1775` |
 | `Apply this change` | Review page | `packages/mcp-server/src/approval-server.ts:1254` |
 | `Add this question` | Review page | `packages/mcp-server/src/approval-server.ts:1254` |
 | `Change this text` | Review page | `packages/mcp-server/src/approval-server.ts:1254` |

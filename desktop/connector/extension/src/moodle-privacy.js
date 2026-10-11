@@ -360,6 +360,7 @@ export async function collectMoodleCourseParticipantRoster(input) {
     try {
       response = await fetch(requestUrl(method), {
         method: "POST",
+        mode: "same-origin",
         credentials: "include",
         cache: "no-store",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -392,6 +393,7 @@ export async function collectMoodleCourseParticipantRoster(input) {
     try {
       response = await fetch(url.toString(), {
         method,
+        mode: "same-origin",
         credentials: "include",
         cache: "no-store",
         redirect: "follow",

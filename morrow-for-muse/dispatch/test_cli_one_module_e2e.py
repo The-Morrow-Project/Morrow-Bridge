@@ -102,7 +102,7 @@ FAKE_CANVAS = textwrap.dedent('''
                 return 200, {}, json.dumps(ROSTER)
             if route.endswith("/enrollments"):
                 return 200, {}, "[]"
-            if route.endswith("/pages/week-1"):
+            if route.endswith(("/pages/week-1", "/pages/page_id:11")):
                 page = dict(PAGE)
                 if method == "PUT":
                     page.update((data or {}).get("wiki_page") or {})

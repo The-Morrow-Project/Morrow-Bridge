@@ -20,7 +20,7 @@ const {
 } = require("../shared/claude-desktop.cjs");
 const { terminateProcessTree } = require("../shared/process-lifetime.cjs");
 const installerController = require("../shared/installer-controller.cjs");
-const { freshRecord } = require("../shared/state-policy.cjs");
+const { freshRecord, inspectRecord } = require("../shared/state-policy.cjs");
 
 const inspectionOptionsBySetup = new WeakMap();
 
@@ -331,6 +331,40 @@ async function handshake(child, { complete = true } = {}) {
   }
   if (complete) child.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
 }
+
+test("Claude Desktop starts with installed assistant routes and refuses unknown route fields", async (t) => {
+  const input = await fixture(t);
+  const route = { id: "00000000-0000-4000-8000-000000000001", generation: "A".repeat(43) };
+  const home = path.join(input.root, "Home");
+  const targets = {
+    codex: path.join(home, ".codex", "config.toml"),
+    "claude-code": path.join(input.root, "Project", ".mcp.json"),
+    "gemini-cli": path.join(input.root, "Project", ".gemini", "settings.json"),
+  };
+  const configured = Object.fromEntries(Object.entries(targets).map(([id, target]) => [id, {
+    target, sha256: "a".repeat(64), route,
+  }]));
+  await activateSetup(input, input.setup, { configured });
+  assert.equal(inspectRecord(JSON.parse(await fs.readFile(input.installerRecordPath, "utf8")), {
+    homeDirectory: home, codexHomeDirectory: "",
+  }).compatible, true);
+  const child = launchFixture(input, [input.managedLauncherPath], { stdio: ["pipe", "pipe", "pipe"] });
+  const closed = once(child, "close");
+  await handshake(child);
+  await waitFor(() => fs.stat(input.setup.receiptPath).then(() => true, () => false), child);
+  assert.equal(JSON.parse(await fs.readFile(input.setup.receiptPath, "utf8")).installationId, input.setup.installationId);
+  child.stdin.end();
+  assert.equal((await closed)[0], 0);
+
+  for (const invalid of [{ ...route, unknown: true }, { ...route, id: "unknown" }, { ...route, generation: "short" }]) {
+    await activateSetup(input, input.setup, { configured: { codex: { ...configured.codex, route: invalid } } });
+    const refused = launchFixture(input, [input.managedLauncherPath], { stdio: ["pipe", "pipe", "pipe"] });
+    let stderr = "";
+    refused.stderr.on("data", (chunk) => { stderr += chunk; });
+    assert.equal((await once(refused, "close"))[0], 1);
+    assert.match(stderr, /Morrow setup changed/);
+  }
+});
 
 /** An installer controller over a temporary user-data root, as main.cjs builds one. */
 function controller(root, overrides = {}) {

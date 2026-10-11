@@ -312,6 +312,18 @@ function mergeDurableRatePolicy(current: RatePolicy, states: readonly BatchRateS
   };
 }
 
+function responseRate(
+  rate: { concurrency: number; backoffMs: number },
+  approvedConcurrency: number,
+): { concurrency: number; backoffMs: number } {
+  if (rate.concurrency > 0 || approvedConcurrency === 0) {
+    return { ...rate, concurrency: Math.min(rate.concurrency, approvedConcurrency) };
+  }
+  // Canvas replenishes quota over time without a reset timestamp. After its
+  // retry delay, one serial request obtains a new observation without replay.
+  return { concurrency: 1, backoffMs: Math.max(rate.backoffMs, 1_000) };
+}
+
 export async function runBatchWindow(
   store: DurableBatchStore,
   batchId: string,
@@ -326,11 +338,10 @@ export async function runBatchWindow(
   const random = options.random || Math.random;
   const sleep = options.sleep || ((milliseconds: number) => new Promise<void>((resolveValue) => setTimeout(resolveValue, milliseconds)));
   const durableRateStates = store.readRateStates(batchId);
-  let policy: RatePolicy = mergeDurableRatePolicy(
-    { ...manifest.ratePolicy, ...options.ratePolicy },
-    durableRateStates,
-  );
-  let rate = windowRate(started, manifest, policy, random);
+  const approvedPolicy: RatePolicy = { ...manifest.ratePolicy, ...options.ratePolicy };
+  const approvedConcurrency = windowRate(started, manifest, options.ratePolicy, () => 0).concurrency;
+  let policy: RatePolicy = mergeDurableRatePolicy(approvedPolicy, durableRateStates);
+  let rate = responseRate(windowRate(started, manifest, policy, random), approvedConcurrency);
   const durableDelayMs = durableRateStates.reduce((maximum, state) => Math.max(maximum, state.remainingDelayMs), 0);
   if (durableDelayMs > rate.backoffMs) rate = { ...rate, backoffMs: durableDelayMs };
   if (TERMINAL_BATCH_STATES.has(started.state)) {
@@ -394,10 +405,10 @@ export async function runBatchWindow(
     let observedDelayMs = 0;
     for (const [sourceId, observations] of observedBySource) {
       const sourcePolicy = mergeRateObservations(priorBySource.get(sourceId)?.policy || {}, observations);
-      const sourceRate = windowRate(started, manifest, {
+      const sourceRate = responseRate(windowRate(started, manifest, {
         ...sourcePolicy,
         ...(policy.jitterRatio === undefined ? {} : { jitterRatio: policy.jitterRatio }),
-      }, random);
+      }, random), approvedConcurrency);
       observedDelayMs = Math.max(observedDelayMs, sourceRate.backoffMs);
       // Persist before child settlement. A crash may retain a conservative
       // delay, but it cannot lose accepted rate-limit evidence while retaining
@@ -407,8 +418,11 @@ export async function runBatchWindow(
     for (const execution of executions) {
       settled.push(store.settleChild(execution.child.batchId, execution.child.childId, execution.result));
     }
-    policy = mergeRateObservations(policy, executions.map((execution) => execution.result.ratePolicy));
-    rate = windowRate(started, manifest, { ...policy, retryAfterMs: undefined }, random);
+    policy = mergeDurableRatePolicy(
+      { ...approvedPolicy, retryAfterMs: undefined },
+      store.readRateStates(batchId),
+    );
+    rate = responseRate(windowRate(started, manifest, policy, random), approvedConcurrency);
     if (observedDelayMs > 0) rate = { ...rate, backoffMs: observedDelayMs };
     minimumConcurrency = Math.min(minimumConcurrency, rate.concurrency);
     if (options.stopOnUnverified && executions.some(({ result }) => (

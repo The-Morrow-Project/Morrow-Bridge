@@ -180,6 +180,83 @@ test("course permission preparation never opens an optional Item Banks launch", 
   assert.deepEqual(value.records.removedTabs, []);
 });
 
+test("a same-origin Moodle login tab yields to a tab that proves the saved account", async () => {
+  const origin = "https://moodle.example.edu";
+  const anchor = {
+    siteAnchorId: "moodle:site-recovery", provider: "moodle", origin, siteUrl: `${origin}/`,
+    principalId: "7", principalFingerprint: "f".repeat(64), sessionGeneration: 3,
+    tabId: 1, lastSeenAt: Date.now(),
+  };
+  const binding = { ...anchor, sourceBindingId: `${anchor.siteAnchorId}:c42`, courseId: "42", courseName: "Anatomy", runtimeVerified: true };
+  const cases = [
+    { label: "the saved account", profile: { siteUrl: anchor.siteUrl, principalId: anchor.principalId }, verified: true },
+    { label: "another account", profile: { siteUrl: anchor.siteUrl, principalId: "8" }, verified: false },
+    { label: "another Moodle site on the same host", profile: { siteUrl: `${origin}/other/`, principalId: anchor.principalId }, verified: false },
+  ];
+  for (const { label, profile, verified } of cases) {
+    const value = install(fixture({ local: { siteAnchors: [anchor], bindings: [binding] } }));
+    const tabs = [
+      { id: 1, url: `${origin}/login/index.php` },
+      { id: 2, url: `${origin}/course/view.php?id=42`, active: true },
+    ];
+    const probes = [];
+    value.api.permissions.contains = async () => true;
+    value.api.tabs.get = async (id) => ({ ...tabs.find((tab) => tab.id === id) });
+    value.api.tabs.query = async () => tabs.map((tab) => ({ ...tab }));
+    value.api.scripting.executeScript = async (injection) => {
+      probes.push(injection.target.tabId);
+      return [{ result: injection.target.tabId === 1 ? { ok: false } : { ok: true, profile } }];
+    };
+    const answer = await send({ type: "morrow_status" });
+    assert.equal(answer.ok, true, label);
+    assert.equal(answer.result.bindings[0].runtimeVerified, verified, label);
+    assert.equal(value.localArea.values.get("siteAnchors")[0].tabId, verified ? 2 : 1, label);
+    assert.ok(probes.includes(2), `${label}: the signed-in candidate was never probed`);
+    assert.deepEqual(value.records.createdTabs, [], label);
+  }
+});
+
+test("a Moodle reattachment refuses an anchor replaced while its account probe is pending", async () => {
+  const origin = "https://moodle.example.edu";
+  for (const changed of [{ siteUrl: `${origin}/other/` }, { principalFingerprint: "e".repeat(64) }, { sessionGeneration: 4 }]) {
+    const anchor = {
+      siteAnchorId: "moodle:site-replaced", provider: "moodle", origin, siteUrl: `${origin}/`,
+      principalId: "7", principalFingerprint: "f".repeat(64), sessionGeneration: 3, tabId: 1, lastSeenAt: Date.now(),
+    };
+    const binding = { ...anchor, sourceBindingId: `${anchor.siteAnchorId}:c42`, courseId: "42", runtimeVerified: true };
+    const value = install(fixture({ local: { siteAnchors: [anchor], bindings: [binding] } }));
+    value.api.permissions.contains = async () => true;
+    value.api.tabs.get = async () => ({ id: 1, url: `${origin}/login/index.php` });
+    value.api.tabs.query = async () => [{ id: 2, url: `${origin}/course/view.php?id=42`, active: true }];
+    value.api.scripting.executeScript = async ({ target }) => {
+      if (target.tabId === 1) return [{ result: { ok: false } }];
+      await value.localArea.set({ siteAnchors: [{ ...anchor, ...changed }] });
+      return [{ result: { ok: true, profile: { siteUrl: anchor.siteUrl, principalId: anchor.principalId } } }];
+    };
+    const answer = await send({ type: "morrow_status" });
+    assert.equal(answer.ok, true);
+    assert.equal(answer.result.bindings[0].runtimeVerified, false);
+    assert.deepEqual(value.localArea.values.get("siteAnchors"), [{ ...anchor, ...changed }]);
+  }
+});
+
+test("a same-origin Moodle anchor without host permission never probes or reattaches", async () => {
+  const origin = "https://moodle.example.edu";
+  const anchor = {
+    siteAnchorId: "moodle:site-no-permission", provider: "moodle", origin, siteUrl: `${origin}/`,
+    principalId: "7", principalFingerprint: "f".repeat(64), sessionGeneration: 3, tabId: 1, lastSeenAt: Date.now(),
+  };
+  const binding = { ...anchor, sourceBindingId: `${anchor.siteAnchorId}:c42`, courseId: "42", runtimeVerified: true };
+  const value = install(fixture({ local: { siteAnchors: [anchor], bindings: [binding] } }));
+  value.api.permissions.contains = async () => false;
+  value.api.tabs.query = async () => { throw new Error("permission must be checked before querying candidates"); };
+  value.api.scripting.executeScript = async () => { throw new Error("permission must be checked before probing"); };
+  const answer = await send({ type: "morrow_status" });
+  assert.equal(answer.ok, true);
+  assert.equal(answer.result.bindings[0].runtimeVerified, false);
+  assert.equal(value.localArea.values.get("siteAnchors")[0].tabId, 1);
+});
+
 test("checking the same Canvas account rotates its session and migrates selected courses and Edit policy", async () => {
   const encoder = new TextEncoder();
   const bytes = await crypto.subtle.digest("SHA-256", encoder.encode("canvas\0https://school.instructure.com\0principal-7"));

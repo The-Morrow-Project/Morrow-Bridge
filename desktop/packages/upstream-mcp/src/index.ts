@@ -1,4 +1,4 @@
-import { Client } from "@modelcontextprotocol/client";
+import { Client, SdkError, SdkErrorCode } from "@modelcontextprotocol/client";
 import {
   getDefaultEnvironment,
 } from "@modelcontextprotocol/client/stdio";
@@ -143,6 +143,22 @@ function abortedError(id: string, signal: AbortSignal): Error {
   return signal.reason instanceof Error
     ? signal.reason
     : new Error(`Upstream ${id} connection cancelled`);
+}
+
+function withSignal<T>(pending: Promise<T>, id: string, signal?: AbortSignal): Promise<T> {
+  if (!signal) return pending;
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener("abort", onAbort);
+      reject(abortedError(id, signal));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    pending.then(
+      (value) => { signal.removeEventListener("abort", onAbort); resolve(value); },
+      (error) => { signal.removeEventListener("abort", onAbort); reject(error); },
+    );
+    if (signal.aborted) onAbort();
+  });
 }
 
 function wait(milliseconds: number, unref: boolean, signal: AbortSignal): Promise<void> {
@@ -414,9 +430,9 @@ export class StdioMcpUpstream {
 
   private startConnection(reconnect: boolean, signal?: AbortSignal): Promise<readonly UpstreamTool[]> {
     if (this.closed) return Promise.reject(closedError(this.id));
-    if (this.client) return Promise.resolve(this.tools);
-    if (this.connectionPromise) return this.connectionPromise;
     if (signal?.aborted) return Promise.reject(abortedError(this.id, signal));
+    if (this.client) return Promise.resolve(this.tools);
+    if (this.connectionPromise) return withSignal(this.connectionPromise, this.id, signal);
     const maximum = reconnect
       ? this.supervision.reconnectAttempts
       : this.supervision.startupAttempts;
@@ -445,12 +461,12 @@ export class StdioMcpUpstream {
     if (signal?.aborted) onAbort();
     this.connectionPromise = pending;
     const finishAttempt = () => {
-      signal?.removeEventListener("abort", onAbort);
-      rejectAborted = null;
       if (this.connectionRun === run) this.connectionRun = null;
     };
     void attempt.then(finishAttempt, finishAttempt);
     const finishPending = () => {
+      signal?.removeEventListener("abort", onAbort);
+      rejectAborted = null;
       if (this.connectionPromise === pending) this.connectionPromise = null;
     };
     void pending.then(finishPending, finishPending);
@@ -488,39 +504,56 @@ export class StdioMcpUpstream {
     args: Readonly<Record<string, unknown>>,
     options: UpstreamCallOptions = {},
   ): Promise<unknown> {
-    let client = this.client;
-    if (!client) {
-      if (!options.safeToRetry) throw new UpstreamNotDispatchedError(this.id);
-      await this.startConnection(true);
-      client = this.client;
-    }
-    if (!client) throw new Error(`Upstream ${this.id} is not connected`);
-
-    const requestOptions = {
-      ...(options.signal ? { signal: options.signal } : {}),
-      ...(options.timeoutMs === undefined ? {} : {
-        timeout: options.timeoutMs,
-        maxTotalTimeout: options.timeoutMs,
-      }),
-    };
+    if (options.signal?.aborted) throw abortedError(this.id, options.signal);
+    const controller = options.timeoutMs === undefined ? undefined : new AbortController();
+    const signal = controller?.signal ?? options.signal;
+    const onAbort = () => controller?.abort(options.signal?.reason);
+    if (controller) options.signal?.addEventListener("abort", onAbort, { once: true });
+    const timer = controller ? setTimeout(() => {
+      controller.abort(new SdkError(SdkErrorCode.RequestTimeout, "Upstream call timed out", { timeout: options.timeoutMs }));
+    }, options.timeoutMs) : undefined;
     try {
-      return await client.callTool({
-        name: normalizeToolName(name),
-        arguments: { ...args },
-        ...(this.options.internalSourceCapability ? { _meta: { "io.morrow/internal-source-capability": this.options.internalSourceCapability } } : {}),
-      }, requestOptions);
-    } catch (error) {
-      if (this.client === client || options.signal?.aborted) throw error;
-      await this.invalidateClient(client);
-      if (!options.safeToRetry) throw error;
-      await this.startConnection(true);
-      const retryClient = this.client;
-      if (!retryClient) throw error;
-      return retryClient.callTool({
-        name: normalizeToolName(name),
-        arguments: { ...args },
-        ...(this.options.internalSourceCapability ? { _meta: { "io.morrow/internal-source-capability": this.options.internalSourceCapability } } : {}),
-      }, requestOptions);
+      const pending = (async () => {
+        let client = this.client;
+        let reconnected = false;
+        if (!client) {
+          if (!options.safeToRetry) throw new UpstreamNotDispatchedError(this.id);
+          await this.startConnection(true, signal);
+          reconnected = true;
+          client = this.client;
+        }
+        if (signal?.aborted) throw abortedError(this.id, signal);
+        if (!client) throw new Error(`Upstream ${this.id} is not connected`);
+
+        const requestOptions = {
+          ...(signal ? { signal } : {}),
+          ...(options.timeoutMs === undefined ? {} : {
+            timeout: options.timeoutMs,
+            maxTotalTimeout: options.timeoutMs,
+          }),
+        };
+        const request = {
+          name: normalizeToolName(name),
+          arguments: { ...args },
+          ...(this.options.internalSourceCapability ? { _meta: { "io.morrow/internal-source-capability": this.options.internalSourceCapability } } : {}),
+        };
+        try {
+          return await client.callTool(request, requestOptions);
+        } catch (error) {
+          if (this.client === client || signal?.aborted) throw error;
+          await this.invalidateClient(client);
+          if (!options.safeToRetry || reconnected) throw error;
+          await this.startConnection(true, signal);
+          if (signal?.aborted) throw abortedError(this.id, signal);
+          const retryClient = this.client;
+          if (!retryClient) throw error;
+          return retryClient.callTool(request, requestOptions);
+        }
+      })();
+      return await withSignal(pending, this.id, signal);
+    } finally {
+      if (timer) clearTimeout(timer);
+      if (controller) options.signal?.removeEventListener("abort", onAbort);
     }
   }
 

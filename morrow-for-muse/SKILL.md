@@ -1,6 +1,6 @@
 # Morrow for Muse: Canvas connector and Moodle module (skill bundle)
 
-You are operating the Morrow for Muse connector, v0.4.12. Canvas and Moodle operations use
+You are operating the Morrow for Muse connector, v0.4.13. Canvas and Moodle operations use
 the VM's installed Chromium and the educator's browser-owned session.
 The private native helper is the sign-in surface. Never ask for, print,
 log, or store a password, cookie, sesskey, or token.
@@ -114,9 +114,12 @@ private sign-in helper for first onboarding or verified reauthentication.
 profile identity, and the supported users/self read. A healthy session needs
 no sign-in page. See `knowledge/troubleshooting-playbook.md`. When `doctor`
 reports `session_expiry_warning` true, tell the educator before starting
-work: their sign-in expires within days (name the horizon) and they will
-need to sign in again soon. Never let the first sign of expiry be a
-failed task.
+work. If `session_expiry_unknown` is true or `session_expiry_horizon_days`
+is `null`, explain that expiry metadata is unavailable. Do not give an
+expiry date or claim that the session has expired. Check the helper status
+before recommending sign-in. Otherwise, report the returned day count and
+advise the educator to sign in again soon. Never let the first sign of
+expiry be a failed task.
 
 1. Write the educator's Canvas address to the tree's `helper/env` as
    `CANVAS_BASE=https://...` (e.g. `https://myschool.instructure.com`),
@@ -216,9 +219,13 @@ signed out, run `reauth/state_machine.py resume` after they sign in
 - `session_expiry_horizon_days`: whole days until the earliest
   persistent tenant cookie expires (cookie metadata only: no names,
   values, or domains ever leave the browser). `null` when unknown.
-- `session_expiry_warning`: true when the horizon is within 7 days.
-  keepalive.sh logs a loud warning in that case: re-sign in through
-  the login helper soon, or the next run may halt mid-operation.
+- `session_expiry_warning`: true when the horizon is within 7 days or
+  the helper could not read expiry metadata. Check `session_expiry_unknown`
+  before describing the warning to the educator.
+- `session_expiry_unknown`: true when the expiry metadata read failed.
+  The horizon is then `null` and the warning is true. A `null` horizon
+  with this field false can also mean there are no persistent tenant
+  cookies. It does not prove that the session has expired.
 
 Deliberately absent: `title`. The server never returns
 `document.title` because page JS can copy cookie values into it, so a
@@ -689,8 +696,9 @@ Item Bank IB- rows marked live-proven
 dispatch through the executor's Item Banks SDK lane (see SCOPE.md for
 which ones). Out for v1: Blackboard (an honestly-disclosed roadmap item,
 not a ship criterion), the retired form relay, and every Canvas row not
-marked live-proven. Moodle uses its separate lane and site-level capability
-probe. Full declaration:
+marked live-proven. Moodle uses `bin/morrow moodle` with pinned browser
+adapters. It is a development candidate; native first-use, production
+admission, and live provider proof remain release gates. Full declaration:
 `SCOPE.md`. Do not imply capabilities beyond it.
 
 ## What the tree holds
@@ -707,12 +715,14 @@ probe. Full declaration:
   `commands.py`, `test_settings.py`, `README.md`): modes,
   per-conversation overrides, and every behavioral knob. The educator
   asks in plain language; the agent calls the typed command.
-- `helper/`: the Canvas Login Helper server, UI, and keepalive, plus
+- `helper/`: the Canvas and Moodle sign-in helper server, UI, and keepalive, plus
   `live_behavior_check.py` (the manual live proof: session persistence
   across restarts, single-Chromium, dead-session redirect, and the
   plugin-attachment proof).
-- `moodle/`: the HTTPS Moodle session lane, capability probe, and
-  reauthentication rules. Read `moodle/SKILL.md` for its operation flow.
+- `moodle/`: the development candidate browser CLI, account pairing,
+  pinned adapters, and governed operation controller. Historical Python
+  HTTPS authentication modules and the capability probe do not ship.
+  Read `moodle/SKILL.md` for its operation flow and release limits.
 - `content/`: educator-facing consent, setup, and revocation pages.
 - `proof-battery/OPERATION_CATALOG.md`: the op catalog with proof statuses.
 - `pack/`: `pack.json` (chromium lane pinned) and `deny-list.txt`.

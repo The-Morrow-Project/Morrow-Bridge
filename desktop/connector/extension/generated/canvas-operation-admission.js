@@ -375,6 +375,7 @@ export function canvasReadbackAssessment(operations, operation, admission = canv
         id: "1",
         page_id: "1",
         rubric_id: "1",
+        rubric: { id: "1" },
         url: "morrow-structural-target",
     });
     if (!plan)

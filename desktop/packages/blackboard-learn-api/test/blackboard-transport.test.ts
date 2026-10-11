@@ -58,6 +58,9 @@ function transport(answer: (request: Sent) => Answer, options?: { readonly diagn
         headers: { "content-type": "application/json" },
       });
     }
+    if (url.pathname === "/learn/api/public/v1/users/me") {
+      return new Response(JSON.stringify({ id: principalId }), { status: 200 });
+    }
     const request: Sent = { method, url, redirect: init.redirect, ...(typeof init.body === "string" ? { body: init.body } : {}) };
     sent.push(request);
     const next = answer(request);
@@ -81,6 +84,37 @@ function records(count: number, offset = 0): { readonly results: readonly { read
 }
 
 describe("Blackboard transport", () => {
+  it.each(["POST", "PUT", "PATCH", "DELETE"] as const)("refuses %s when a read refreshed the credential to another principal", async (method) => {
+    let tokenCount = 0;
+    let reads = 0;
+    const mutations: string[] = [];
+    const fetcher = (async (input: URL | RequestInfo, init: RequestInit = {}) => {
+      const url = new URL(String(input));
+      if (url.pathname === tokenPath) {
+        return new Response(JSON.stringify({ access_token: `token-${++tokenCount}`, expires_in: 3600 }), { status: 200 });
+      }
+      if (url.pathname === "/learn/api/public/v1/users/me") {
+        const authorization = new Headers(init.headers).get("authorization");
+        return new Response(JSON.stringify({ id: authorization === "Bearer token-1" ? principalId : "_99_1" }), { status: 200 });
+      }
+      if (init.method === "GET") {
+        return new Response(JSON.stringify({ id: contentId }), { status: ++reads === 1 ? 401 : 200 });
+      }
+      mutations.push(String(init.method));
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+    const client = new BlackboardLearnClient(tenant, fetcher);
+    await expect(client.resolveAuthenticatedPrincipal()).resolves.toEqual({ state: "verified", principalId });
+    await expect(client.get(contentPath)).resolves.toEqual({ id: contentId });
+    const write = method === "DELETE" ? client.del(contentPath)
+      : method === "POST" ? client.post(contentPath, {})
+        : method === "PUT" ? client.put(contentPath, {})
+          : client.patch(contentPath, { title: "Reviewed title" });
+    await expect(write).rejects.toMatchObject({ code: "blackboard_account_mismatch", dispatchState: "not_sent" });
+    expect(tokenCount).toBe(2);
+    expect(mutations).toEqual([]);
+  });
+
   it("reads a created record and treats an accepted change with no body as no record", async () => {
     const { client, sent } = transport(({ method }) => {
       if (method === "POST") return { status: 201, body: { id: "_44_1", title: "Week 1 announcement" } };
@@ -110,6 +144,9 @@ describe("Blackboard transport", () => {
         const url = new URL(String(input));
         if (url.pathname === tokenPath) {
           return new Response(JSON.stringify({ access_token: "temporary-token", expires_in: 3600 }), { status: 200 });
+        }
+        if (url.pathname === "/learn/api/public/v1/users/me") {
+          return new Response(JSON.stringify({ id: principalId }), { status: 200 });
         }
         return new Response(new ReadableStream({
           start(controller) {
@@ -145,6 +182,9 @@ describe("Blackboard transport", () => {
         if (url.pathname === tokenPath) {
           return new Response(JSON.stringify({ access_token: "temporary-token", expires_in: 3600 }), { status: 200 });
         }
+        if (url.pathname === "/learn/api/public/v1/users/me") {
+          return new Response(JSON.stringify({ id: principalId }), { status: 200 });
+        }
         return new Response(new ReadableStream({
           start(controller) { controller.enqueue(Uint8Array.from([0x7b, 0x22, 0xff])); },
           cancel() { cancelled += 1; },
@@ -176,6 +216,9 @@ describe("Blackboard transport", () => {
       const url = new URL(String(input));
       if (url.pathname === tokenPath) {
         return new Response(JSON.stringify({ access_token: "temporary-token", expires_in: 3600 }), { status: 200 });
+      }
+      if (url.pathname === "/learn/api/public/v1/users/me") {
+        return new Response(JSON.stringify({ id: principalId }), { status: 200 });
       }
       return new Response(new ReadableStream({
         cancel() { cancelled += 1; },

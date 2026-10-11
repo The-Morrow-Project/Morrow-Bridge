@@ -330,7 +330,12 @@ function validConfiguredEntry(assistantId, value) {
       && path.basename(value.bundlePath) === "Morrow.mcpb" && path.basename(value.receiptPath) === "connection.json"
       && typeof value.installationId === "string" && /^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,159}$/.test(value.installationId);
   }
-  return exactObject(value, ["target", "sha256"]) && canonicalPath(value.target) && /^[a-f0-9]{64}$/.test(value.sha256 || "");
+  const hasRoute = plainObject(value) && Object.hasOwn(value, "route");
+  return exactObject(value, hasRoute ? ["target", "sha256", "route"] : ["target", "sha256"])
+    && canonicalPath(value.target) && /^[a-f0-9]{64}$/.test(value.sha256 || "")
+    && (!hasRoute || (exactObject(value.route, ["id", "generation"])
+      && typeof value.route.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value.route.id)
+      && typeof value.route.generation === "string" && /^[A-Za-z0-9_-]{43}$/.test(value.route.generation)));
 }
 function currentInstallerRecord() {
   try {

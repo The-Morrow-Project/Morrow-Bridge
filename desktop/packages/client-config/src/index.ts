@@ -202,6 +202,7 @@ export interface InstallMorrowClientOptions extends ClientConfigBundleOptions {
   readonly client: SupportedMorrowClient;
   readonly scope?: MorrowClientScope;
   readonly projectRoot?: string;
+  readonly codexHomeDirectory?: string;
   /** Replace the client file only when its complete bytes still match this recorded digest. */
   readonly expectedConfigSha256?: string;
   /** Replace an existing server of this name when it carries Morrow's marker, whatever else changed. */
@@ -1204,6 +1205,8 @@ export interface MorrowClientConfigLocation {
   readonly projectRoot?: string;
   /** The signed-in person's home directory. Defaults to this account's home directory. */
   readonly homeDirectory?: string;
+  /** Codex's CODEX_HOME override. An empty value uses the default home. */
+  readonly codexHomeDirectory?: string;
   /** Defaults to this computer's platform. */
   readonly platform?: string;
   /** Windows %APPDATA%. Defaults to the APPDATA environment variable. */
@@ -1223,14 +1226,28 @@ export function morrowClientConfigPath(input: MorrowClientConfigLocation): strin
     : exactAbsolutePath(input.homeDirectory || homedir(), "homeDirectory");
   switch (client) {
     // ChatGPT, the Codex CLI, and the Codex IDE extension share one MCP configuration file, and
-    // `codex mcp add` writes the user one at ~/.codex/config.toml. A project layer
+    // `codex mcp add` writes config.toml under CODEX_HOME, which defaults to ~/.codex. A project layer
     // <project>/.codex/config.toml is documented too, but Codex loads it only for a project the
     // person has marked trusted, and the ChatGPT desktop application is reported to load only the
     // user file (openai/codex issue 13025, open on 6 September 2026). Morrow's ChatGPT route is
     // therefore user scope; project scope stays available for the Codex CLI in a trusted project.
     // Sources: https://learn.chatgpt.com/docs/extend/mcp and
     // https://learn.chatgpt.com/docs/config-file/config-basic, both read 6 September 2026.
-    case "codex": return join(root(), ".codex", "config.toml");
+    case "codex": {
+      const codexHome = input.codexHomeDirectory ?? process.env.CODEX_HOME;
+      if (scope !== "user" || !codexHome) return join(root(), ".codex", "config.toml");
+      try {
+        const canonical = realpathSync(codexHome);
+        if (!statSync(canonical).isDirectory()) throw new Error("not a directory");
+        return join(canonical, "config.toml");
+      } catch {
+        throw new MorrowClientConfigRefusal({
+          code: "client_configuration_location_unknown", client, scope, platform,
+          reason: "CODEX_HOME does not name an existing Codex settings folder.",
+          nextAction: "Choose an existing CODEX_HOME folder, then start this step again.",
+        });
+      }
+    }
     case "claude-code": return scope === "project" ? join(root(), ".mcp.json") : join(root(), ".claude.json");
     case "claude-desktop": {
       if (scope !== "user") {
@@ -2158,9 +2175,11 @@ export function morrowClientConfigurationStatus(
     upstreamConfigPath: canonicalUpstreamConfigPath,
   });
   const homeDirectory = exactAbsolutePath(homedir(), "homeDirectory");
-  const path = morrowClientConfigPath({ client, scope, projectRoot: configurationRoot, homeDirectory });
+  const path = morrowClientConfigPath({ client, scope, projectRoot: configurationRoot, homeDirectory, codexHomeDirectory: options.codexHomeDirectory });
   const clientConfigurationRoot = scope === "project"
     ? configurationRoot
+    : client === "codex" && (options.codexHomeDirectory ?? process.env.CODEX_HOME)
+      ? dirname(path)
     : client === "claude-desktop" && process.platform === "win32"
       ? dirname(dirname(path))
       : homeDirectory;
@@ -2215,9 +2234,11 @@ export function installMorrowClient(options: InstallMorrowClientOptions): Instal
     upstreamConfigPath: canonicalUpstreamConfigPath,
   });
   const homeDirectory = exactAbsolutePath(homedir(), "homeDirectory");
-  const path = morrowClientConfigPath({ client, scope, projectRoot: configurationRoot, homeDirectory });
+  const path = morrowClientConfigPath({ client, scope, projectRoot: configurationRoot, homeDirectory, codexHomeDirectory: options.codexHomeDirectory });
   const clientConfigurationRoot = scope === "project"
     ? configurationRoot
+    : client === "codex" && (options.codexHomeDirectory ?? process.env.CODEX_HOME)
+      ? dirname(path)
     : client === "claude-desktop" && process.platform === "win32"
       ? dirname(dirname(path))
       : homeDirectory;

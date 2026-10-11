@@ -76,23 +76,29 @@ async function harness(options: {
   readonly principalVerification?: BlackboardPrincipalVerification;
   /** Seconds the fixture's OAuth token lasts, which is what the principal cache is held against. */
   readonly tokenLifetime?: number;
+  readonly refreshOnContentRead?: number;
+  readonly principalAfterRefresh?: PrincipalAnswer;
 } = {}) {
   const answers = { principal: options.principal || { kind: "account", id: principalId } as PrincipalAnswer };
   let patchCount = 0;
   let principalReadCount = 0;
   let courseRequestCount = 0;
+  let tokenCount = 0;
+  let contentReadCount = 0;
+  const requests: { pathname: string; method: string; authorization: string | undefined }[] = [];
   let content: JsonObject = {
     id: contentId, courseId, contentHandler: { id: "resource/x-bb-document" },
     title: "Welcome", availability: { available: "Yes" },
   };
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
     const pathname = new URL(request.url || "/", "http://fixture").pathname;
+    requests.push({ pathname, method: request.method || "GET", authorization: request.headers.authorization });
     if (pathname === "/learn/api/public/v1/oauth2/token") {
-      json(response, { access_token: "temporary-token", expires_in: options.tokenLifetime || 3600 }); return;
+      json(response, { access_token: `temporary-token-${++tokenCount}`, expires_in: options.tokenLifetime || 3600 }); return;
     }
     if (pathname === "/learn/api/public/v1/users/me") {
       principalReadCount += 1;
-      const answer = answers.principal;
+      const answer = tokenCount > 1 && options.principalAfterRefresh ? options.principalAfterRefresh : answers.principal;
       if (answer.kind === "status") { json(response, { message: "refused" }, answer.status); return; }
       if (answer.kind === "text") {
         response.writeHead(200, { "content-type": "application/json" });
@@ -116,7 +122,11 @@ async function harness(options: {
       json(response, { id: courseId, courseId: "BIO-101", name: "Biology", ultraStatus: "Ultra", closedComplete: false }); return;
     }
     if (pathname === `/learn/api/public/v1/courses/${courseId}`) { json(response, { id: courseId, name: "Biology" }); return; }
-    if (pathname === contentPath && request.method === "GET") { json(response, content); return; }
+    if (pathname === contentPath && request.method === "GET") {
+      contentReadCount += 1;
+      if (contentReadCount === options.refreshOnContentRead) { json(response, {}, 401); return; }
+      json(response, content); return;
+    }
     if (pathname === contentPath && request.method === "PATCH") {
       patchCount += 1;
       let source = "";
@@ -157,8 +167,9 @@ async function harness(options: {
     client,
     runtime,
     scope,
+    requests,
     answerPrincipalWith: (answer: PrincipalAnswer) => { answers.principal = answer; },
-    counts: () => ({ patchCount, principalReadCount, courseRequestCount }),
+    counts: () => ({ patchCount, principalReadCount, courseRequestCount, tokenCount }),
     read: async () => structured(await client.callTool({ name: "blackboard_read_course", arguments: scope })),
     plan: async (patch: JsonObject) => structured(await client.callTool({
       name: "blackboard_plan_content_patch",
@@ -202,6 +213,32 @@ describe("Blackboard integration principal", () => {
     });
     // Nothing about the course was read, and nothing was changed.
     expect(fixture.counts()).toMatchObject({ courseRequestCount: 0, patchCount: 0 });
+  });
+
+  it("refuses a refreshed token for another principal before the final reviewed PATCH", async () => {
+    const fixture = await harness({ refreshOnContentRead: 3, principalAfterRefresh: { kind: "account", id: otherPrincipalId } });
+    const patch = { title: "Reviewed title" };
+    const plan = await fixture.plan(patch);
+    const result = await fixture.apply(patch, String(plan.planDigest), "effect:00000000-0000-4000-8000-000000000003");
+    expect(result).toMatchObject({ ok: false, resultState: "not_sent", problem: { code: "blackboard_account_mismatch" } });
+    expect(fixture.counts()).toMatchObject({ patchCount: 0, principalReadCount: 2, tokenCount: 2 });
+    expect(fixture.requests.filter((request) => request.method === "PATCH")).toEqual([]);
+    expect(fixture.requests.filter((request) => request.pathname.includes("/courses/"))
+      .every((request) => request.pathname.includes(`/courses/${courseId}`))).toBe(true);
+  });
+
+  it("keeps the reviewed course and confirms the PATCH when a refreshed token has the same principal", async () => {
+    const fixture = await harness({ refreshOnContentRead: 3, principalAfterRefresh: { kind: "account", id: principalId } });
+    const patch = { title: "Reviewed title" };
+    const plan = await fixture.plan(patch);
+    const result = await fixture.apply(patch, String(plan.planDigest), "effect:00000000-0000-4000-8000-000000000004");
+    expect(result).toMatchObject({ ok: true, resultState: "applied", courseId, contentId, content: { title: "Reviewed title" } });
+    expect(fixture.counts()).toMatchObject({ patchCount: 1, principalReadCount: 2, tokenCount: 2 });
+    expect(fixture.requests.filter((request) => request.method === "PATCH")).toEqual([
+      { pathname: contentPath, method: "PATCH", authorization: "Bearer temporary-token-2" },
+    ]);
+    expect(fixture.requests.filter((request) => request.pathname.includes("/courses/"))
+      .every((request) => request.pathname.includes(`/courses/${courseId}`))).toBe(true);
   });
 
   it("reports a rejected credential as unauthorized, not as an unverified account", async () => {

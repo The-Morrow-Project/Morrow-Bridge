@@ -5,6 +5,7 @@ const { spawnSync } = require("node:child_process");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const { detectAssistant, runBoundedCommand } = require("../../installer/shared/installer-controller.cjs");
 const { probeWindowsCommandShim, windowsCommandShimInvocation } = require("../../installer/shared/assistant-app-detection.cjs");
 const { WINDOWS_CODEX_APPX_QUERY, parseAppxPackages } = require("../../installer/shared/windows-appx-detection.cjs");
@@ -60,6 +61,46 @@ async function readStorePackages(runCommand = runBoundedCommand, emit = (value) 
   const packages = parseAppxPackages(result.stdout);
   assert.notEqual(packages, null, "The real Windows Store query must return valid package metadata");
   return packages;
+}
+
+async function verifyCustomCodexConfiguration(cliPath) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "morrow-codex-native-config-"));
+  const previous = process.env.CODEX_HOME;
+  try {
+    const custom = path.join(root, "Codex Léa α");
+    const runtime = path.join(root, "Morrow runtime");
+    await fs.mkdir(custom);
+    await fs.mkdir(runtime);
+    const serverEntryPath = path.join(runtime, "server.js");
+    const upstreamConfigPath = path.join(runtime, "upstreams.json");
+    await fs.writeFile(serverEntryPath, "");
+    await fs.writeFile(upstreamConfigPath, "{}\n");
+    process.env.CODEX_HOME = path.relative(process.cwd(), custom);
+    const { installMorrowClient, morrowClientConfigurationStatus } = await import(pathToFileURL(
+      path.resolve(__dirname, "../../packages/client-config/dist/index.js"),
+    ).href);
+    const options = { client: "codex", scope: "user", repositoryRoot: runtime,
+      serverEntryPath, upstreamConfigPath, nodeCommand: process.execPath };
+    const installed = installMorrowClient(options);
+    // Windows temp paths can use 8.3 aliases; resolve both names with the same API.
+    assert.equal(await fs.realpath(installed.path), await fs.realpath(path.join(custom, "config.toml")));
+    assert.equal(morrowClientConfigurationStatus(options).configured, true);
+    const result = await runBoundedCommand(process.execPath, [cliPath, "mcp", "list", "--json"], {
+      env: { ...process.env }, timeoutMs: 10_000, maxOutputBytes: 32 * 1024,
+    });
+    assert.equal(result.termination, null);
+    assert.equal(result.code, 0, "The official CLI must read the isolated custom settings file");
+    const servers = JSON.parse(result.stdout);
+    assert.equal(servers.length, 1);
+    assert.equal(servers[0].name, "morrow");
+    assert.equal(await fs.realpath(servers[0].transport.command), await fs.realpath(process.execPath));
+    process.stdout.write(`${JSON.stringify({ schema: "morrow.codex-custom-home-configuration.v1",
+      platform: process.platform, configured: true, nativeDiscovered: true })}\n`);
+  } finally {
+    if (previous === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = previous;
+    await fs.rm(root, { recursive: true, force: true });
+  }
 }
 
 async function main(values = process.argv.slice(2)) {
@@ -123,6 +164,7 @@ async function main(values = process.argv.slice(2)) {
     assert.equal(specialPath.literal.stdout.trim(), "native-command-shim-fixture");
     assert.equal(official.detected, true, "The production shim probe must execute the official npm CLI");
     assert.equal(specialPath.detected, true, "The production shim probe must execute a path with spaces and metacharacters");
+    await verifyCustomCodexConfiguration(path.join(input.prefix, "node_modules", "@openai", "codex", manifest.bin.codex));
   }
 
   const detected = await detectAssistant({ id: "codex" });
@@ -138,4 +180,4 @@ async function main(values = process.argv.slice(2)) {
 
 if (require.main === module) main().catch((error) => { console.error(error); process.exitCode = 1; });
 
-module.exports = { argumentsFrom, main, readStorePackages };
+module.exports = { argumentsFrom, main, readStorePackages, verifyCustomCodexConfiguration };

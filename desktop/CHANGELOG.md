@@ -2,11 +2,27 @@
 
 Release notes for Morrow Desktop. Tags use the form `desktop/vX.Y.Z` (see [docs/versioning.md](../docs/versioning.md)). Published installers are on [GitHub Releases](https://github.com/bradenriggins/morrow/releases). Releases before 1.0.5 have no entry here.
 
-## 1.0.15 (2026-10-08)
+## 1.0.15 (2026-10-11)
 
 ### Keep approval reviews open
 
 - For Chrome Web Store updates, Morrow Bridge waits to reload when it cannot confirm that your approval review is closed.
+- Reuse an open approval review when you return to it. Keep keyboard focus and open action details when course permissions refresh.
+
+### Check the course before changing it
+
+- Check the selected course before creating or changing a Canvas rubric association. Confirm the rubric and grading scheme fields that you approved after saving.
+- Check the Blackboard account again when sign-in is renewed. Stop a change if the account differs from the one reviewed.
+- Keep Moodle form submissions on the signed-in course site. Recover a course connection when its old browser tab has signed out.
+- Check an approved correction through the same course and account review as a new change. Rechecking a completed operation keeps its verified result.
+
+### Keep setup and batches reliable
+
+- Connect Codex CLI through the settings folder you chose. Start the Claude Desktop connection when setup also records other assistant routes.
+- Release a failed data-removal attempt only after cleanup is confirmed, so a retry cannot conflict with an unresolved attempt.
+- Resume a rate-limited Canvas batch one approved task at a time after the pause. Keep each course site's current limit until that site reports a new value.
+- Stop a cancelled or timed-out safe read while its connection is being restored.
+- Apply Plan access to every connected course even if one permission update fails. Report any course that could not be confirmed.
 
 ### Approvals and Edit access
 
@@ -14,7 +30,11 @@ Release notes for Morrow Desktop. Tags use the form `desktop/vX.Y.Z` (see [docs/
 
 ### Technical notes
 
-- Include Morrow Bridge 1.0.138. Defer a Chrome Web Store update reload when session storage cannot be read or its stored approval record is malformed.
+- Include Morrow Bridge 1.0.139. Defer a Chrome Web Store update reload when session storage cannot be read or its stored approval record is malformed.
+- Normalize Canvas rate telemetry at the connector boundary and preserve per-source batch budgets. Bind correction dispatch to fresh authority and preserve immutable verified states.
+- Refuse foreign Moodle POST redirects before credentials leave the course site. Bind Blackboard write retries to a fresh, token-specific principal check.
+- Add focused regressions for rubric scope and exact readback, connection cancellation, installer recovery, configured Codex homes, and passive permission refresh.
+- Honor the configured `CODEX_HOME` folder for Codex CLI setup and connections.
 - Run the registered Store-update regressions in the existing Desktop CI gate.
 - Clarify that an engineering MCP archive cannot prepare the Bridge folder needed for course pairing. Complete course setup uses Morrow Desktop or the existing source installation.
 

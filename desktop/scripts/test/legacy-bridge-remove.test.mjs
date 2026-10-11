@@ -29,7 +29,7 @@ async function installedFixture() {
   const donor = resolve(directory, 'donor');
   const extension = resolve(donor, 'extension');
   const catalogPath = resolve(directory, 'catalog.json');
-  await mkdir(extension, { recursive: true });
+  await mkdir(extension, { recursive: true, mode: 0o755 });
   await writeFile(resolve(extension, 'background.js'), BACKGROUND);
   await writeFile(resolve(donor, 'preserve.txt'), 'preserve donor work\n');
   git(donor, 'init', '--quiet');

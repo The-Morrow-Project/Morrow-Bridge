@@ -418,6 +418,151 @@ describe("BAT durable batch requirements", () => {
     }
   });
 
+  it("resumes an exhausted response budget after its saved cooldown and restores approved concurrency", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "morrow-batch-rate-replenish-"));
+    const path = join(directory, "morrow.sqlite3");
+    const key = randomBytes(32);
+    let now = Date.parse("2029-01-01T00:00:00.000Z");
+    let store = new DurableBatchStore({ path, encryptionKey: key, now: () => new Date(now) });
+    try {
+      const created = readBatch(store, 5);
+      const dispatched: string[] = [];
+      const first = await runBatchWindow(store, created.batch.batchId, async ({ child }) => {
+        dispatched.push(child.childId);
+        return {
+          state: "succeeded",
+          resultDigest: sha256Json({ childId: child.childId }),
+          ratePolicy: { requestCost: 1, rateLimitRemaining: 0, retryAfterMs: 2_000 },
+        };
+      }, {
+        expectedCatalogDigest: catalogDigest,
+        maxChildren: 1,
+        ratePolicy: { requestCost: 1, rateLimitRemaining: 2 },
+        random: () => 0,
+      });
+      expect(first).toMatchObject({ processed: 1, remaining: 4 });
+      store.close();
+
+      now += 500;
+      store = new DurableBatchStore({ path, encryptionKey: key, now: () => new Date(now) });
+      const slept: number[] = [];
+      let active = 0;
+      let maximumActive = 0;
+      const resumed = await runBatchWindow(store, created.batch.batchId, async ({ child }) => {
+        dispatched.push(child.childId);
+        active += 1;
+        maximumActive = Math.max(maximumActive, active);
+        await Promise.resolve();
+        active -= 1;
+        return {
+          state: "succeeded",
+          resultDigest: sha256Json({ childId: child.childId }),
+          ratePolicy: { requestCost: 1, rateLimitRemaining: 100 },
+        };
+      }, {
+        expectedCatalogDigest: catalogDigest,
+        maxChildren: 4,
+        ratePolicy: { requestCost: 1, rateLimitRemaining: 2 },
+        random: () => 0,
+        sleep: async (milliseconds) => { slept.push(milliseconds); now += milliseconds; },
+      });
+      expect(slept).toEqual([1_500]);
+      expect(maximumActive).toBe(2);
+      expect(dispatched).toEqual(["course:1", "course:2", "course:3", "course:4", "course:5"]);
+      expect(resumed).toMatchObject({ processed: 4, remaining: 0, batch: { state: "completed" } });
+    } finally {
+      store.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("retains another source's lower budget after a later source reports replenishment", async () => {
+    const store = new DurableBatchStore({ path: ":memory:", encryptionKey: randomBytes(32) });
+    try {
+      const created = store.create({
+        name: "Separate source budgets",
+        mode: "read_only",
+        catalogDigest,
+        concurrency: 4,
+        children: [1, 2, 3, 4, 5].map((index) => ({
+          ...readChild(index), sourceId: index === 1 || index === 4 ? "source-a" : "source-b",
+        })),
+      });
+      store.recordRateState(created.batch.batchId, "source-a", { requestCost: 1, rateLimitRemaining: 1 }, 0);
+      store.recordRateState(created.batch.batchId, "source-b", { requestCost: 1, rateLimitRemaining: 100 }, 0);
+      let active = 0;
+      let maximumActive = 0;
+      const dispatched: string[] = [];
+      const result = await runBatchWindow(store, created.batch.batchId, async ({ child }) => {
+        dispatched.push(child.childId);
+        active += 1;
+        maximumActive = Math.max(maximumActive, active);
+        await Promise.resolve();
+        active -= 1;
+        return {
+          state: "succeeded",
+          resultDigest: sha256Json({ childId: child.childId }),
+          ratePolicy: { requestCost: 1, rateLimitRemaining: child.sourceId === "source-a" ? 1 : 100 },
+        };
+      }, { expectedCatalogDigest: catalogDigest, maxChildren: 5 });
+      expect(maximumActive).toBe(1);
+      expect(dispatched).toEqual(["course:1", "course:2", "course:3", "course:4", "course:5"]);
+      expect(result).toMatchObject({ processed: 5, remaining: 0, batch: { state: "completed" } });
+      expect(store.readRateStates(created.batch.batchId)).toMatchObject([
+        { sourceId: "source-a", policy: { requestCost: 1, rateLimitRemaining: 1 } },
+        { sourceId: "source-b", policy: { requestCost: 1, rateLimitRemaining: 100 } },
+      ]);
+    } finally { store.close(); }
+  });
+
+  it("does not probe when the frozen manifest explicitly permits no rate budget", async () => {
+    const store = new DurableBatchStore({ path: ":memory:", encryptionKey: randomBytes(32) });
+    try {
+      const created = store.create({
+        name: "Frozen zero budget",
+        mode: "read_only",
+        catalogDigest,
+        concurrency: 4,
+        ratePolicy: { requestCost: 1, rateLimitRemaining: 0 },
+        children: [readChild(1)],
+      });
+      store.recordRateState(created.batch.batchId, "meridian", { requestCost: 1, rateLimitRemaining: 100 }, 0);
+      const dispatched: string[] = [];
+      const result = await runBatchWindow(store, created.batch.batchId, async ({ child }) => {
+        dispatched.push(child.childId);
+        return { state: "succeeded", resultDigest: sha256Json({ childId: child.childId }) };
+      }, { expectedCatalogDigest: catalogDigest });
+      expect(dispatched).toEqual([]);
+      expect(result).toMatchObject({ processed: 0, remaining: 1, effectiveConcurrency: 0, backoffMs: 0 });
+    } finally { store.close(); }
+  });
+
+  it("refreshes an insufficient response budget with a paced unsent child while retaining frozen concurrency", async () => {
+    const store = new DurableBatchStore({ path: ":memory:", encryptionKey: randomBytes(32) });
+    try {
+      const created = readBatch(store, 3);
+      const dispatched: string[] = [];
+      const slept: number[] = [];
+      const result = await runBatchWindow(store, created.batch.batchId, async ({ child }) => {
+        dispatched.push(child.childId);
+        return {
+          state: "succeeded",
+          resultDigest: sha256Json({ childId: child.childId }),
+          ratePolicy: { requestCost: 1, rateLimitRemaining: child.ordinal === 1 ? 0.5 : 100 },
+        };
+      }, {
+        expectedCatalogDigest: catalogDigest,
+        maxChildren: 3,
+        ratePolicy: { requestCost: 1, rateLimitRemaining: 1 },
+        random: () => 0,
+        sleep: async (milliseconds) => { slept.push(milliseconds); },
+      });
+      expect(slept).toEqual([1_000]);
+      expect(dispatched).toEqual(["course:1", "course:2", "course:3"]);
+      expect(result).toMatchObject({ processed: 3, remaining: 0, effectiveConcurrency: 1 });
+    } finally { store.close(); }
+  });
+
   it("pauses an automatic write window before a rate-reduced next wave after an unverified result", async () => {
     const store = new DurableBatchStore({ path: ":memory:", encryptionKey: randomBytes(32) });
     const created = store.create({

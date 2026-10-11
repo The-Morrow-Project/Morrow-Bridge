@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { renameSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, join, resolve } from "node:path";
+import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
@@ -458,6 +458,45 @@ describe("project installation and hermetic parity", () => {
     } finally {
       if (originalHome === undefined) delete process.env.HOME;
       else process.env.HOME = originalHome;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("honors CODEX_HOME for an isolated user install and exact configuration readback", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "morrow-codex-home-"));
+    const repositoryRoot = join(directory, "runtime app");
+    const serverEntryPath = join(repositoryRoot, "server.js");
+    const upstreamConfigPath = join(repositoryRoot, "upstreams.json");
+    const codexHome = join(directory, "Codex Léa α");
+    const explicitHome = join(directory, "Other account");
+    const previous = process.env.CODEX_HOME;
+    try {
+      for (const folder of [repositoryRoot, codexHome, explicitHome]) await mkdir(folder);
+      await writeFile(serverEntryPath, "", "utf8");
+      await writeFile(upstreamConfigPath, "{}\n", "utf8");
+      process.env.CODEX_HOME = codexHome;
+      const options = { repositoryRoot, serverEntryPath, upstreamConfigPath,
+        nodeCommand: process.execPath, client: "codex" as const, scope: "user" as const };
+      const installed = installMorrowClient(options);
+      expect(await realpath(installed.path)).toBe(await realpath(join(codexHome, "config.toml")));
+      expect(morrowClientConfigurationStatus(options)).toEqual({
+        path: installed.path, configured: true, sha256: installed.sha256,
+      });
+      const explicitTarget = morrowClientConfigPath({ ...options, codexHomeDirectory: explicitHome });
+      expect(basename(explicitTarget)).toBe("config.toml");
+      expect(await realpath(dirname(explicitTarget))).toBe(await realpath(explicitHome));
+      expect(morrowClientConfigPath({ client: "codex", scope: "project", projectRoot: repositoryRoot }))
+        .toBe(join(repositoryRoot, ".codex", "config.toml"));
+      process.env.CODEX_HOME = "";
+      expect(morrowClientConfigPath({ client: "codex", scope: "user", homeDirectory: directory }))
+        .toBe(join(directory, ".codex", "config.toml"));
+      for (const invalid of [join(directory, "missing"), serverEntryPath]) {
+        process.env.CODEX_HOME = invalid;
+        expect(refusalOf(() => installMorrowClient(options)).code).toBe("client_configuration_location_unknown");
+      }
+    } finally {
+      if (previous === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = previous;
       await rm(directory, { recursive: true, force: true });
     }
   });
