@@ -82,7 +82,8 @@ async function verifyCustomCodexConfiguration(cliPath) {
     const options = { client: "codex", scope: "user", repositoryRoot: runtime,
       serverEntryPath, upstreamConfigPath, nodeCommand: process.execPath };
     const installed = installMorrowClient(options);
-    assert.equal(installed.path, path.join(await fs.realpath(custom), "config.toml"));
+    // Windows temp paths can use 8.3 aliases; resolve both names with the same API.
+    assert.equal(await fs.realpath(installed.path), await fs.realpath(path.join(custom, "config.toml")));
     assert.equal(morrowClientConfigurationStatus(options).configured, true);
     const result = await runBoundedCommand(process.execPath, [cliPath, "mcp", "list", "--json"], {
       env: { ...process.env }, timeoutMs: 10_000, maxOutputBytes: 32 * 1024,
@@ -92,7 +93,7 @@ async function verifyCustomCodexConfiguration(cliPath) {
     const servers = JSON.parse(result.stdout);
     assert.equal(servers.length, 1);
     assert.equal(servers[0].name, "morrow");
-    assert.equal(servers[0].transport.command, await fs.realpath(process.execPath));
+    assert.equal(await fs.realpath(servers[0].transport.command), await fs.realpath(process.execPath));
     process.stdout.write(`${JSON.stringify({ schema: "morrow.codex-custom-home-configuration.v1",
       platform: process.platform, configured: true, nativeDiscovered: true })}\n`);
   } finally {
