@@ -456,6 +456,7 @@ export function canvasReadbackAssessment(
     id: "1",
     page_id: "1",
     rubric_id: "1",
+    rubric: { id: "1" },
     url: "morrow-structural-target",
   });
   if (!plan) return { state: "unavailable", reason: "no_safe_readback_route" };

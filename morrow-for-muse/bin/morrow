@@ -324,6 +324,24 @@ def _doctor(json_mode=False):
                      % (logged_in, alive))
         facts["helper"] = {"reachable": True, "logged_in": logged_in,
                             "chromium_alive": alive}
+        horizon = payload.get("session_expiry_horizon_days")
+        if type(horizon) is not int or horizon < 0:
+            horizon = None
+        expiry_warning = payload.get("session_expiry_warning") is True
+        expiry_unknown = payload.get("session_expiry_unknown") is True
+        facts["helper"].update(session_expiry_horizon_days=horizon,
+                                session_expiry_warning=expiry_warning,
+                                session_expiry_unknown=expiry_unknown)
+        if expiry_unknown:
+            lines.append("helper: WARNING: session expiry is unknown; "
+                         "check the private sign-in helper")
+        elif expiry_warning:
+            if horizon is None:
+                lines.append("helper: WARNING: session expiry warning; "
+                             "check the private sign-in helper")
+            else:
+                lines.append("helper: WARNING: the session expires in %d "
+                             "day(s); sign in again soon" % horizon)
         # The moodle identity check reads local tree files; its failures
         # are local, never helper reachability, so they get their own
         # label instead of sharing the UNREACHABLE branch above.

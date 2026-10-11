@@ -9234,6 +9234,7 @@ export class GatewayRuntime {
     supplied: OuterOperationControls,
     authorization: EffectAuthorization,
     bindingScope?: EffectBindingScope,
+    correctionOf?: string,
   ): JsonObject {
       if (isMoodleStagedFile(mapping) || isCanvasCourseFileTransfer(mapping)) {
         throw new TypeError("Prepare the local file with its exact Morrow file planner before review.");
@@ -9304,8 +9305,8 @@ export class GatewayRuntime {
         });
       }
       const controls: OuterOperationControls = { ...supplied, readback };
-      const operation = this.planEffect(mapping, controls, authorization, undefined, bindingScope);
-      return this.effectResult(operation, "planned");
+      const operation = this.planEffect(mapping, controls, authorization, correctionOf, bindingScope);
+      return this.effectResult(operation, correctionOf ? "correction_planned" : "planned");
   }
 
   private planOperationRejected(publicName: string, error: unknown): JsonObject {
@@ -9847,6 +9848,10 @@ export class GatewayRuntime {
 
   async verifyOperation(operationId: string): Promise<JsonObject> {
     const operation = this.effects.get(operationId);
+    if (operation.state === "verified" && operation.verificationStatus === "verified"
+      && !isConnectorReadbackPolicy(operation.readback)) {
+      return this.effectResult(operation, "verified_readback");
+    }
     // A read already proved this change did not save as approved. It is settled and not read again.
     if (operation.state === "failed" && operation.verificationStatus === "mismatch") {
       return this.effectResult(operation, "readback_mismatch");
@@ -10765,11 +10770,12 @@ export class GatewayRuntime {
     ]);
   }
 
-  undoOperation(
+  async undoOperation(
     operationId: string,
     correctionTool: string,
     correctionArguments: Readonly<Record<string, unknown>>,
-  ): JsonObject {
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<JsonObject> {
     const original = this.effects.get(operationId);
     if (!isCorrectableEffectOperation(original)) {
       throw new Error("Only an operation Morrow may have sent can take a correction");
@@ -10778,11 +10784,13 @@ export class GatewayRuntime {
     if (!mapping || mapping.annotations?.readOnlyHint === true) {
       throw new Error("A correction must use one current mutating Morrow tool");
     }
+    assertPublicMoodleLearnerInput(mapping.publicName, correctionArguments);
     const supplied = outerOperationControls(correctionArguments);
-    const readback = this.derivedReadback(mapping, supplied.request);
-    if (!readback) throw new Error("A correction requires a route-owned readback comparator");
-    const correction = this.planEffect(mapping, { ...supplied, readback }, REVIEW_AUTHORIZATION, original.operationId);
-    return this.effectResult(correction, "correction_planned");
+    const prepared = await this.prepareEffectAuthority(correctionTool, supplied.request, options);
+    options.signal?.throwIfAborted();
+    return this.planOperationWithControls(
+      correctionTool, mapping, supplied, REVIEW_AUTHORIZATION, prepared.bindingScope, original.operationId,
+    );
   }
 
   async callSourceOwned(

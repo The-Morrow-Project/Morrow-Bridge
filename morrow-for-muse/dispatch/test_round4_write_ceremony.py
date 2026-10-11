@@ -106,7 +106,7 @@ def _plan(hermetic, op_id):
 def _canvas(stored_body=None):
     """Fake Canvas: course 101 is Bio 101; the page reads back whatever
     the last PUT stored."""
-    state = {"page": {"url": "week-1", "title": "Old title",
+    state = {"page": {"page_id": 7, "url": "week-1", "title": "Old title",
                       "published": True}}
 
     def handler(method, url, body):

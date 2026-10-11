@@ -292,6 +292,36 @@ def test_doctor_json_unhealthy(cli, monkeypatch, capsys):
     assert facts["helper"]["logged_in"] is False
 
 
+@pytest.mark.parametrize("horizon, warning, unknown, message", [
+    (2, True, False, "the session expires in 2 day(s)"),
+    (None, True, True, "session expiry is unknown"),
+    (30, False, False, None),
+    (None, False, False, None),
+])
+def test_doctor_reports_session_expiry(cli, monkeypatch, capsys,
+                                      horizon, warning, unknown, message):
+    monkeypatch.setattr(
+        cli.urllib.request, "urlopen",
+        lambda url, timeout=10, context=None: _FakeResp({
+            "logged_in": True, "chromium_alive": True,
+            "session_expiry_horizon_days": horizon,
+            "session_expiry_warning": warning,
+            "session_expiry_unknown": unknown,
+        }))
+    assert cli.main(["doctor", "--json"]) == 0
+    helper = json.loads(capsys.readouterr().out)["helper"]
+    assert helper["session_expiry_horizon_days"] == horizon
+    assert helper["session_expiry_warning"] is warning
+    assert helper["session_expiry_unknown"] is unknown
+
+    assert cli.main(["doctor"]) == 0
+    out = capsys.readouterr().out
+    if message is not None:
+        assert message in out
+    else:
+        assert "session expiry" not in out
+
+
 def test_doctor_default_output_unchanged(cli, monkeypatch, capsys):
     monkeypatch.setattr(
         cli.urllib.request, "urlopen",

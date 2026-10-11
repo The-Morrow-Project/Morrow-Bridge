@@ -1098,6 +1098,147 @@ test("a checkbox change inside Customize updates in place, with no second render
   assert.equal(actionInput(page, ROUTINE_BUNDLE_B.id).checked, true);
 });
 
+test("a passive Customize refresh preserves its valid focused action and open directory", async () => {
+  const page = await openEditStage([CHECKED_ACTION, UNCHECKED_ACTION]);
+  await openCustomizeGroup(page, "pages", "edit");
+  const directory = page.query(".customize-more");
+  directory.open = true;
+  const selector = `.customize-action-input[value="${UNCHECKED_ACTION.id}"]`;
+  page.query(selector).focus();
+  page.listeners.message[0]({ type: "morrow_bridge_status_changed" });
+  await page.waitFor(() => page.messages("morrow_edit_policy_status").length > 1 && !page.query("#refresh").disabled,
+    "the passive status read did not finish");
+  await page.flush();
+  assert.equal(page.query(".customize-more").open, true);
+  assert.equal(page.document.activeElement, page.query(selector));
+});
+
+test("a passive Customize refresh restores a valid action after reading a new options revision", async () => {
+  let revision = 0;
+  const page = await openSettings({
+    status: () => statusFixture([{ ...ANATOMY, editPolicyRevision: revision }]),
+    options: (sourceBindingId) => optionsFixture(sourceBindingId, [CHECKED_ACTION, UNCHECKED_ACTION], { policyRevision: revision }),
+  });
+  await selectCourse(page, ANATOMY.sourceBindingId);
+  await page.click("#mode-edit");
+  await openCustomizeGroup(page, "pages", "edit");
+  page.query(".customize-more").open = true;
+  const selector = `.customize-action-input[value="${UNCHECKED_ACTION.id}"]`;
+  page.query(selector).focus();
+  revision += 1;
+  page.listeners.message[0]({ type: "morrow_bridge_status_changed" });
+  await page.waitFor(() => page.messages("morrow_edit_policy_options").length === 2 && page.queryAll(selector).length === 1,
+    "the new options revision was not rendered");
+  assert.equal(page.document.activeElement, page.query(selector));
+  assert.equal(page.query(".customize-more").open, true);
+});
+
+test("a pending Customize refresh does not reclaim focus after the person moves elsewhere", async () => {
+  let revision = 0;
+  let releaseOptions;
+  const pendingOptions = new Promise((resolve) => { releaseOptions = resolve; });
+  const page = await openSettings({
+    status: () => statusFixture([{ ...ANATOMY, editPolicyRevision: revision }]),
+    options: async (sourceBindingId) => {
+      if (revision) await pendingOptions;
+      return optionsFixture(sourceBindingId, [CHECKED_ACTION, UNCHECKED_ACTION], { policyRevision: revision });
+    },
+  });
+  await selectCourse(page, ANATOMY.sourceBindingId);
+  await page.click("#mode-edit");
+  await openCustomizeGroup(page, "pages", "edit");
+  page.query(".customize-more").open = true;
+  page.query(`.customize-action-input[value="${UNCHECKED_ACTION.id}"]`).focus();
+  revision += 1;
+  page.listeners.message[0]({ type: "morrow_bridge_status_changed" });
+  await page.waitFor(() => page.text("#category-list").includes("Reading the current individual actions"), "the options read did not start");
+  page.query("#course-filter").focus();
+  releaseOptions();
+  await page.waitFor(() => page.queryAll(".customize-more").length === 1, "the new actions did not appear");
+  assert.equal(page.document.activeElement, page.query("#course-filter"));
+  assert.equal(page.query(".customize-more").open, true);
+});
+
+test("Customize focus and disclosures do not transfer to a changed course authority", async () => {
+  for (const changed of [{ principalFingerprint: "e".repeat(64) }, { siteUrl: "https://canvas.example.edu/other" }, { courseId: "2" }]) {
+    let binding = ANATOMY;
+    const page = await openSettings({
+      status: () => statusFixture([binding]),
+      options: (sourceBindingId) => optionsFixture(sourceBindingId, [CHECKED_ACTION, UNCHECKED_ACTION]),
+    });
+    await selectCourse(page, ANATOMY.sourceBindingId);
+    await page.click("#mode-edit");
+    await openCustomizeGroup(page, "pages", "edit");
+    page.query(".customize-more").open = true;
+    page.query(`.customize-action-input[value="${UNCHECKED_ACTION.id}"]`).focus();
+    binding = { ...ANATOMY, ...changed };
+    page.listeners.message[0]({ type: "morrow_bridge_status_changed" });
+    await page.waitFor(() => page.messages("morrow_edit_policy_status").length === 2 && !page.query("#refresh").disabled,
+      "the changed authority read did not settle");
+    await page.flush();
+    assert.equal(page.document.activeElement, page.query("#mode-edit"));
+    assert.equal(page.query(".customize-more").open, false);
+  }
+});
+
+test("an unverified Customize selection moves focus to the course heading and clears disclosure state", async () => {
+  let verified = true;
+  const page = await openSettings({
+    status: () => statusFixture([{ ...ANATOMY, runtimeVerified: verified }]),
+    options: (sourceBindingId) => optionsFixture(sourceBindingId, [CHECKED_ACTION, UNCHECKED_ACTION]),
+  });
+  await selectCourse(page, ANATOMY.sourceBindingId);
+  await page.click("#mode-edit");
+  await openCustomizeGroup(page, "pages", "edit");
+  page.query(".customize-more").open = true;
+  page.query(`.customize-action-input[value="${UNCHECKED_ACTION.id}"]`).focus();
+  verified = false;
+  page.listeners.message[0]({ type: "morrow_bridge_status_changed" });
+  await page.waitFor(() => page.text("#category-list").includes("Open each selected course"), "the invalid selection was not refused");
+  assert.equal(page.document.activeElement, page.query("#courses-title"));
+  verified = true;
+  await page.click("#refresh");
+  await page.waitFor(() => page.queryAll(".customize-more").length === 1, "the verified actions did not return");
+  await page.click("#mode-edit");
+  assert.equal(page.query(".customize-more").open, false);
+});
+
+test("a passive Customize refresh never restores a removed authority control", async () => {
+  let options = [CHECKED_ACTION];
+  let revision = 0;
+  const page = await openSettings({
+    status: () => statusFixture([{ ...ANATOMY, editPolicyRevision: revision }]),
+    options: (sourceBindingId) => optionsFixture(sourceBindingId, options, { policyRevision: revision }),
+  });
+  await selectCourse(page, ANATOMY.sourceBindingId);
+  await page.click("#mode-edit");
+  await openCustomizeGroup(page, "pages", "edit");
+  page.query(`.customize-action-input[value="${CHECKED_ACTION.id}"]`).focus();
+  revision += 1;
+  options = [];
+  page.listeners.message[0]({ type: "morrow_bridge_status_changed" });
+  await page.waitFor(() => page.text("#category-list").includes("share no Edit action"), "the removed action remained in the picker");
+  assert.equal(page.queryAll(`.customize-action-input[value="${CHECKED_ACTION.id}"]`).length, 0);
+  assert.equal(page.document.activeElement, page.query("#action-filter"));
+});
+
+test("a Customize refresh refuses to restore a group checkbox that is no longer selectable", async () => {
+  let options = [CHECKED_ACTION];
+  let revision = 0;
+  const page = await openSettings({
+    status: () => statusFixture([{ ...ANATOMY, editPolicyRevision: revision }]),
+    options: (sourceBindingId) => optionsFixture(sourceBindingId, options, { policyRevision: revision }),
+  });
+  await selectCourse(page, ANATOMY.sourceBindingId);
+  await page.click("#mode-edit");
+  page.query('[data-area-select="pages"]').focus();
+  revision += 1;
+  options = [{ ...CHECKED_ACTION, requiresFieldSelection: true }];
+  page.listeners.message[0]({ type: "morrow_bridge_status_changed" });
+  await page.waitFor(() => page.queryAll('[data-area-select="pages"]').some((box) => box.disabled), "the unavailable group stayed enabled");
+  assert.equal(page.document.activeElement, page.query("#action-filter"));
+});
+
 // WI-5.5: the summary bar states the grant in one sentence, always visible above "Review and save",
 // before a person saves it.
 test("the summary bar states the grant in one sentence before save", async () => {
@@ -1564,6 +1705,32 @@ test("the banner counts every connection that can act with no review, and ignore
 
   const none = await openSettings({ status: () => statusFixture([canvasCourse(4, "History")]) });
   assert.equal(none.hidden("#edit-access-banner"), true);
+});
+
+test("Ask first in all courses attempts later courses after a failure and announces the partial result", async () => {
+  const bindings = [ANATOMY, PHYSIOLOGY, canvasCourse(3, "Genetics")].map((binding) => ({
+    ...binding,
+    editPermission: { ...editPermissionSummary(binding.sourceBindingId), enabledCategories: [CHECKED_ACTION.id] },
+  }));
+  const revoked = [];
+  const page = await openSettings({
+    status: () => statusFixture(bindings),
+    handlers: {
+      morrow_edit_policy_revoke: ({ sourceBindingId }) => {
+        revoked.push(sourceBindingId);
+        if (sourceBindingId === ANATOMY.sourceBindingId) return { ok: false, code: "edit_policy_revoke_unconfirmed" };
+        delete bindings.find((binding) => binding.sourceBindingId === sourceBindingId).editPermission;
+        return { revoked: true };
+      },
+    },
+  });
+  await page.click("#ask-first-all-courses");
+  await page.waitFor(() => page.text("#notice") !== "", "the partial result was not reported");
+  assert.deepEqual(revoked, bindings.map((binding) => binding.sourceBindingId));
+  assert.equal(page.text("#notice"), "2 courses returned to Plan. Edit access removal was not confirmed for Anatomy.");
+  assert.equal(page.text("#announcement"), page.text("#notice"));
+  assert.equal(page.text("#error"), `2 courses returned to Plan. ${problemText("edit_policy_revoke_unconfirmed")}`);
+  assert.equal(page.text("#edit-access-banner-text"), "Morrow can make some changes with no review in 1 course.");
 });
 
 test("a state the page cannot read is named as itself, with the next action", async () => {

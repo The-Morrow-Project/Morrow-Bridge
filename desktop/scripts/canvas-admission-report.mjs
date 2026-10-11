@@ -47,7 +47,7 @@ function structuralArguments(operation) {
   return Object.fromEntries((operation.parameters || []).map((parameter) => [parameter.inputName, "1"]));
 }
 
-const STRUCTURAL_RESPONSE = Object.freeze({ id: "1", page_id: "1", rubric_id: "1", url: "morrow-structural-target" });
+const STRUCTURAL_RESPONSE = Object.freeze({ id: "1", page_id: "1", rubric_id: "1", rubric: { id: "1" }, url: "morrow-structural-target" });
 
 /** How the planned read relates to the written object. Anything else reads a different resource. */
 function readbackRouteTier(executorOwned, operation, plan, declared) {

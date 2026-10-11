@@ -327,10 +327,15 @@ describe("outer provider effects", () => {
         verification: { status: "verified" },
         receipts: { dispatchAttempt: 1 },
       });
+      const readsBeforeVerification = runtime.journal.health().totalOperations;
+      expect(await runtime.verifyOperation(id)).toMatchObject({
+        structuredContent: { effectState: "verified", verification: { status: "verified" } },
+      });
+      expect(runtime.journal.health().totalOperations).toBe(readsBeforeVerification);
       const replay = await runtime.dispatchOperation(id);
       expect(replay.isError).toBe(true);
 
-      const correction = runtime.undoOperation(id, "morrow_legacy_only", { value: "corrected", course_id: "101" });
+      const correction = await runtime.undoOperation(id, "morrow_legacy_only", { value: "corrected", course_id: "101" });
       expect(correction.structuredContent).toMatchObject({
         schema: "morrow.result.v1",
         phase: "correction_planned",
@@ -344,8 +349,8 @@ describe("outer provider effects", () => {
 
       // A record still in review has nothing at the provider to correct.
       const pending = await runtime.call("morrow_legacy_only", { value: "pending", course_id: "102" });
-      expect(() => runtime.undoOperation(operationId(pending), "morrow_legacy_only", { value: "x", course_id: "102" }))
-        .toThrow("may have sent");
+      await expect(runtime.undoOperation(operationId(pending), "morrow_legacy_only", { value: "x", course_id: "102" }))
+        .rejects.toThrow("may have sent");
     } finally {
       await runtime.close();
     }

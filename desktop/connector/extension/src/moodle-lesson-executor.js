@@ -792,6 +792,7 @@ export async function executeMoodleLessonPageWriteInPage(rawInput) {
       dispatched.sent = true;
       response = await fetch(endpoint, {
         method: "POST",
+        mode: "same-origin",
         credentials: "include",
         cache: "no-store",
         redirect: "follow",

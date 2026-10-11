@@ -1022,6 +1022,7 @@ export async function executeMoodleInPage(input) {
     try {
       response = await fetch(urlFor(context, "/repository/draftfiles_ajax.php", { action }), {
         method: "POST",
+        mode: "same-origin",
         credentials: "include",
         cache: "no-store",
         headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
@@ -1068,6 +1069,7 @@ export async function executeMoodleInPage(input) {
     try {
       response = await fetch(urlFor(context, "/lib/ajax/service.php", { sesskey: context.sesskey, info: methodName }), {
         method: "POST",
+        mode: "same-origin",
         credentials: "include",
         cache: "no-store",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -1565,7 +1567,7 @@ export async function executeMoodleInPage(input) {
     if (executionExpired()) return error("moodle_execution_expired");
     let response;
     try {
-      response = await fetch(form.action, { method: "POST", credentials: "include", cache: "no-store", redirect: "follow", headers: { Accept: "text/html", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: params, signal: requestSignal(input?.expiresAt) });
+      response = await fetch(form.action, { method: "POST", mode: "same-origin", credentials: "include", cache: "no-store", redirect: "follow", headers: { Accept: "text/html", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: params, signal: requestSignal(input?.expiresAt) });
     } catch { return { ok: false, sent: true, outcomeUnknown: true, verification: { schema: "morrow.browser-verification.v1", status: "unconfirmed", reason: "moodle_write_response_unknown" }, error: "moodle_write_response_unknown" }; }
     let text;
     try { text = await readText(response); } catch { return { ok: false, sent: true, status: response.status, outcomeUnknown: true, verification: { schema: "morrow.browser-verification.v1", status: "unconfirmed", reason: "moodle_write_response_unknown" }, error: "moodle_write_response_unknown" }; }
@@ -2273,7 +2275,7 @@ export async function executeMoodleInPage(input) {
     params.set("submitbutton2", form.submit.value);
     if (executionExpired()) return error("moodle_execution_expired");
     let response;
-    try { response = await fetch(form.action, { method: "POST", credentials: "include", cache: "no-store", redirect: "follow", headers: { Accept: "text/html", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: params, signal: requestSignal(input?.expiresAt) }); } catch { return unconfirmedResourceCreate(undefined, `moodle_${module}_save_unknown`); }
+    try { response = await fetch(form.action, { method: "POST", mode: "same-origin", credentials: "include", cache: "no-store", redirect: "follow", headers: { Accept: "text/html", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: params, signal: requestSignal(input?.expiresAt) }); } catch { return unconfirmedResourceCreate(undefined, `moodle_${module}_save_unknown`); }
     let text;
     try { text = await readText(response); } catch { return unconfirmedResourceCreate(response.status, `moodle_${module}_save_unknown`); }
     if (!response.ok) return unconfirmedResourceCreate(response.status, `moodle_${module}_save_unknown`);

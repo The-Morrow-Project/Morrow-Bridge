@@ -293,12 +293,8 @@ def _admission_hard_checks(entry, params, tenant_base):
     enforced at dispatch and is not re-demanded here. No check is
     tenant-dependent: nothing is ever gated by tenant.
     """
-    policy = _admission.load_policy()
-    _admission.check_never_dispatch(entry, policy)
-    _admission.check_unsupported(entry, policy)
-    _admission.check_evidence_holds(entry, policy)
-    _admission.check_learner_data(entry, policy,
-                                  vault_ready=_vault.vault_available())
+    _admission.check_policy_gates(
+        entry, vault_ready=_vault.vault_available(), params=params)
 
 
 class BrowserLaneBlocked(ex.ExecutorError):
@@ -2025,7 +2021,8 @@ def dispatch_browser_undo(entry, params, result_payload, of_op_id, lane_state,
     # Admission gate: undo is a write; it needs its own educator approval,
     # bound to the undo action and its target (never the forward write's).
     ex._check_auxiliary_learner_data(entry, _vault.vault_available())
-    _admission.check_policy_gates(entry, _vault.vault_available())
+    _admission.check_policy_gates(entry, _vault.vault_available(),
+                                  params=params)
     # The undo target comes ONLY from the original op's journaled
     # receipt; a caller payload that disagrees is refused.
     result_payload = ex.journaled_undo_result(entry, params, of_op_id,

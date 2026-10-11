@@ -63,7 +63,7 @@ def test_the_audit_detail_keeps_the_exact_request(monkeypatch):
     prepared = _prepared(monkeypatch, {"wiki_page": {
         "title": "Week 1 Overview"}})
     audit = prepared["audit_detail"]
-    assert "PUT /api/v1/courses/101/pages/week-1" in audit
+    assert "PUT /api/v1/courses/101/pages/page_id:7" in audit
     assert '"title": "Week 1 Overview"' in audit
     assert "sha256" in audit
     assert "audit_detail" in prepared["message"]

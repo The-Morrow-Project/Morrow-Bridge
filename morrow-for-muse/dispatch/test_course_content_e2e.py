@@ -173,7 +173,8 @@ class Canvas:
             assert query.get("state[]") == ["deleted"], query
             assert query.get("type[]") == ["StudentEnrollment"], query
             return self._ok(DELETED)
-        if path == "/api/v1/courses/1/pages/week-1":
+        if path in ("/api/v1/courses/1/pages/week-1",
+                    "/api/v1/courses/1/pages/page_id:7"):
             if method == "PUT":
                 page = dict(self.page)
                 page.update(data["wiki_page"])
@@ -599,7 +600,8 @@ class AddressCanvas(Canvas):
                                   html_url=BASE + "/courses/1/pages/week-1"),
                              {k: v for k, v in self.iep.items()
                               if k != "body"}])
-        if path == "/api/v1/courses/1/pages/" + IEP_SLUG:
+        if path in ("/api/v1/courses/1/pages/" + IEP_SLUG,
+                    "/api/v1/courses/1/pages/page_id:11"):
             data = json.loads(body) if body else None
             self.calls.append((method, url, data))
             if method == "PUT":
@@ -683,7 +685,7 @@ def test_plan_write_prepares_a_page_named_by_its_labeled_address():
                                     "conversation_id": CONV})
     puts = [u for m, u, _b in session.calls if m == "PUT"]
     assert urllib.parse.urlsplit(puts[0]).path \
-        == "/api/v1/courses/1/pages/" + IEP_SLUG
+        == "/api/v1/courses/1/pages/page_id:11"
 
 
 def test_file_names_made_from_a_name_are_labeled():

@@ -58,32 +58,20 @@ const EXACT_READBACKS = Object.freeze({
     create_assignment_group: { read: "get_assignment_group", dynamic: { assignment_group_id: "id" }, targetField: "id", strategy: "created-resource" },
     create_new_discussion_topic_courses: { read: "get_single_topic_courses", dynamic: { topic_id: "id" }, targetField: "id", strategy: "created-resource" },
     create_new_discussion_topic_groups: { read: "get_single_topic_groups", dynamic: { topic_id: "id" }, targetField: "id", strategy: "created-resource" },
-    // Canvas stores a scheme entry as the fraction of the percentage it was given,
-    // so the saved scheme is proved against the scheme Canvas said it saved rather
-    // than against the percentages the request named.
-    // Canvas answers a new rubric with the rubric and its association together,
-    // and names the rubric's own title `title` rather than the `rubric[title]` the
-    // request used. The saved rubric is read by its own id and compared with the
-    // title Canvas says it saved.
     create_single_rubric: {
         read: "get_single_rubric_courses",
         dynamic: { id: "id" },
+        fixedArguments: { include: ["associations"] },
         targetField: "id",
         strategy: "created-resource",
-        ignoredAssertions: [
-            "rubric_title", "rubric_criteria", "rubric_free_form_criterion_comments", "id",
-            "rubric_association_id", "rubric_association_association_id", "rubric_association_association_type",
-            "rubric_association_purpose", "rubric_association_use_for_grading", "rubric_association_hide_score_total",
-        ],
-        responseAssertions: ["title"],
+        // An existing rubric is a source for this create; Canvas may clone it.
+        ignoredAssertions: ["id"],
     },
     create_new_grading_standard_courses: {
         read: "get_single_grading_standard_in_context_courses",
         dynamic: { grading_standard_id: "id" },
         targetField: "id",
         strategy: "created-resource",
-        ignoredAssertions: ["grading_scheme_entry_name", "grading_scheme_entry_value"],
-        responseAssertions: ["title", "grading_scheme"],
     },
     create_external_tool_courses: { read: "get_single_external_tool_courses", dynamic: { external_tool_id: "id" }, targetField: "id", strategy: "created-resource" },
     // Both the write and the folder list read carry one folder id, and they mean different folders:
@@ -336,6 +324,137 @@ function requestedAssertions(write, args, ignored = [], bodies = []) {
         return [{ inputName: parameter.inputName, paths, expected }];
     });
 }
+function assertionRecord(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+        ? value
+        : null;
+}
+function returnedRubricId(value) {
+    const id = assertionRecord(assertionRecord(value)?.rubric)?.id;
+    if (typeof id !== "string" && !(typeof id === "number" && Number.isSafeInteger(id)))
+        return undefined;
+    return /^[1-9][0-9]{0,18}$/.test(String(id)) ? String(id) : undefined;
+}
+function normalizedRubricRating(value) {
+    const record = assertionRecord(value);
+    if (!record)
+        return null;
+    const points = record.points === undefined ? 0 : numericValue(record.points);
+    if (points === undefined)
+        return null;
+    const result = { ...record, points };
+    for (const key of ["description", "long_description", "id"]) {
+        if (typeof result[key] === "string")
+            result[key] = result[key].trim();
+    }
+    if (result.id === "")
+        delete result.id;
+    return result;
+}
+/** Canvas Rubric.generate_criteria orders the indexed hash and derives points from its ratings. */
+function normalizedRubricCriteria(value) {
+    const indexed = assertionRecord(value);
+    if (!indexed)
+        return null;
+    const result = [];
+    const entries = Object.entries(indexed).sort(([left], [right]) => (parseInt(left, 10) || 0) - (parseInt(right, 10) || 0));
+    for (const [, value] of entries) {
+        const record = assertionRecord(value);
+        if (!record)
+            return null;
+        const indexedRatings = record.ratings === undefined ? {} : assertionRecord(record.ratings);
+        if (!indexedRatings)
+            return null;
+        const ratings = Object.values(indexedRatings).map(normalizedRubricRating);
+        if (ratings.some((rating) => rating === null))
+            return null;
+        const ordered = ratings.sort((left, right) => {
+            const points = Number(right.points) - Number(left.points);
+            const leftDescription = String(left.description || "");
+            const rightDescription = String(right.description || "");
+            return points || (leftDescription < rightDescription ? -1 : leftDescription > rightDescription ? 1 : 0);
+        });
+        const criterion = {
+            ...record,
+            ratings: ordered,
+            points: ordered.length ? Math.max(...ordered.map((rating) => Number(rating.points))) : 0,
+        };
+        for (const key of ["description", "long_description", "id"]) {
+            if (typeof criterion[key] === "string")
+                criterion[key] = criterion[key].trim();
+        }
+        if (criterion.id === "")
+            delete criterion.id;
+        if (record.criterion_use_range !== undefined)
+            criterion.criterion_use_range = record.criterion_use_range === true || record.criterion_use_range === "true";
+        for (const key of ["ignore_for_scoring", "generated"]) {
+            if (record[key] !== undefined)
+                criterion[key] = [true, "true", "1"].includes(record[key]);
+        }
+        result.push(criterion);
+    }
+    return result;
+}
+/** GradingStandard.standard_data= scales, orders and rounds thresholds; names are trimmed on save. */
+function normalizedGradingScheme(args) {
+    const names = args?.grading_scheme_entry_name;
+    const values = args?.grading_scheme_entry_value;
+    if (!Array.isArray(names) || !Array.isArray(values) || names.length === 0 || names.length !== values.length
+        || names.some((name) => typeof name !== "string"))
+        return null;
+    const pointsBased = [true, "true", "1"].includes(args?.points_based);
+    const scale = pointsBased ? numericValue(args?.scaling_factor ?? 1) : 100;
+    if (scale === undefined || scale <= 0)
+        return null;
+    const scheme = names.map((name, index) => {
+        const value = numericValue(values[index]);
+        return value === undefined ? null : { name: name.trim(), value: Math.round(value / scale * 10_000) / 10_000 };
+    });
+    if (scheme.some((entry) => entry === null) || new Set(names.map((name) => name.trim())).size !== names.length)
+        return null;
+    return scheme.sort((left, right) => right.value - left.value);
+}
+function normalizedRequestedAssertions(write, args, writeData, assertions) {
+    if (write.nickname === "create_new_grading_standard_courses") {
+        const scheme = normalizedGradingScheme(args);
+        if (!scheme)
+            return assertions;
+        return [
+            ...assertions.filter((assertion) => !["grading_scheme_entry_name", "grading_scheme_entry_value"].includes(assertion.inputName)),
+            { inputName: "grading_scheme_entry", paths: [["grading_scheme"]], expected: scheme },
+        ];
+    }
+    if (write.nickname !== "create_single_rubric")
+        return assertions;
+    const associationInputs = assertions.filter((assertion) => assertion.inputName.startsWith("rubric_association"));
+    const association = {};
+    for (const assertion of associationInputs) {
+        const key = assertion.inputName === "rubric_association_id" ? "id" : assertion.paths[0]?.[1];
+        if (key)
+            association[key] = assertion.expected;
+    }
+    // Response values locate generated records only; the requested fields remain the comparator.
+    const returnedAssociation = assertionRecord(assertionRecord(writeData)?.rubric_association);
+    if (associationInputs.length && association.id === undefined && returnedAssociation?.id !== undefined)
+        association.id = returnedAssociation.id;
+    const hasAssociationTarget = association.id !== undefined
+        || (association.association_id !== undefined && association.association_type !== undefined);
+    if (associationInputs.length && hasAssociationTarget)
+        association.rubric_id = returnedRubricId(writeData);
+    return [
+        ...assertions.flatMap((assertion) => {
+            if (associationInputs.includes(assertion) && hasAssociationTarget)
+                return [];
+            if (assertion.inputName !== "rubric_criteria")
+                return [assertion];
+            const criteria = normalizedRubricCriteria(assertion.expected);
+            return criteria ? [{ ...assertion, paths: [["data"]], expected: criteria }] : [assertion];
+        }),
+        ...(associationInputs.length && hasAssociationTarget
+            ? [{ inputName: "rubric_association", paths: [["associations"]], expected: association }]
+            : []),
+    ];
+}
 function responseAssertions(names, writeData) {
     return (names || []).flatMap((inputName) => {
         const expected = valueByKey(writeData, inputName);
@@ -413,7 +532,11 @@ export function planBrowserReadback(operations, write, args, writeData) {
     // readbacks carry their own reviewed route and evaluator.
     if (!override && !hasNamedCanvasReadback(write) && !readsWriteTargetResource(write, read))
         return null;
-    const argumentsValue = readArguments(read, args, override?.dynamic, override?.fixedArguments, writeData, override?.argumentsFromWrite);
+    const rubricId = write.nickname === "create_single_rubric" ? returnedRubricId(writeData) : undefined;
+    if (write.nickname === "create_single_rubric" && !rubricId)
+        return null;
+    const locatorData = rubricId ? { id: rubricId } : writeData;
+    const argumentsValue = readArguments(read, args, override?.dynamic, override?.fixedArguments, locatorData, override?.argumentsFromWrite);
     if (!argumentsValue)
         return null;
     const collectionArgument = !override && !hasNamedCanvasReadback(write) ? collectionTargetArgument(write, read) : undefined;
@@ -423,9 +546,9 @@ export function planBrowserReadback(operations, write, args, writeData) {
     const targetId = override?.targetArgument
         ? args?.[override.targetArgument]
         : override?.targetResponse
-            ? valueByKey(writeData, override.targetResponse)
+            ? valueByKey(locatorData, override.targetResponse)
             : write.method === "POST"
-                ? valueByKey(writeData, "id")
+                ? valueByKey(locatorData, "id")
                 : collectionArgument
                     ? args?.[collectionArgument]
                     : undefined;
@@ -450,7 +573,7 @@ export function planBrowserReadback(operations, write, args, writeData) {
             })()
             : {}),
         assertions: [
-            ...requestedAssertions(write, args, [...(override?.ignoredAssertions || []), ...(override?.orderArgument ? [override.orderArgument] : [])], override?.bodyAssertions),
+            ...normalizedRequestedAssertions(write, args, writeData, requestedAssertions(write, args, [...(override?.ignoredAssertions || []), ...(override?.orderArgument ? [override.orderArgument] : [])], override?.bodyAssertions)),
             ...responseAssertions(override?.responseAssertions, writeData),
             ...fixedAssertions(override?.fixedAssertions),
         ],
@@ -478,6 +601,22 @@ function assertedValues(record, paths) {
 }
 const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
 const NUMBER_LITERAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+// Canvas timestamp fields hold instants. Date-only fields and text keep their literal values.
+const CANVAS_TIMESTAMP_PATHS = new Set([
+    ...[
+        "", "assignment", "assignment.peer_review", "assignment_override", "assignment.assignment_overrides",
+        "assignment.peer_review.peer_review_overrides", "assignment_overrides", "peer_review", "peer_review.peer_review_overrides", "quiz",
+    ].flatMap((parent) => ["due_at", "lock_at", "unlock_at"].map((field) => parent ? `${parent}.${field}` : field)),
+    ...[
+        "", "calendar_event", "calendar_event.child_event_data.X", "course", "course_section", "enrollment",
+        "enrollment_term", "enrollment_term.overrides.enrollment_type", "account_notification", "events",
+    ].flatMap((parent) => ["start_at", "end_at"].map((field) => parent ? `${parent}.${field}` : field)),
+    "delayed_post_at", "module.unlock_at", "wiki_page.publish_at", "token.expires_at", "submission.submitted_at",
+    "quiz.hide_correct_answers_at", "quiz.show_correct_answers_at",
+    ...["hide_item_response_correctness_at", "hide_item_responses_at", "show_item_response_correctness_at", "show_item_responses_at"]
+        .map((field) => `quiz.quiz_settings.result_view_settings.${field}`),
+    ...["start_date", "end_date", "close_date"].map((field) => `grading_periods.${field}`),
+].map((path) => wirePath(path).map(normalizeKey).join(".")));
 function numericValue(value) {
     if (typeof value === "number")
         return Number.isFinite(value) ? value : undefined;
@@ -489,7 +628,7 @@ function numericValue(value) {
     const parsed = Number(text);
     return Number.isFinite(parsed) ? parsed : undefined;
 }
-function equivalent(actual, expected) {
+function equivalent(actual, expected, fieldPath = []) {
     if (Object.is(actual, expected))
         return true;
     if (actual === null || expected === null || actual === undefined || expected === undefined)
@@ -497,14 +636,14 @@ function equivalent(actual, expected) {
     if (Array.isArray(expected))
         return Array.isArray(actual)
             && actual.length === expected.length
-            && expected.every((entry, index) => equivalent(actual[index], entry));
+            && expected.every((entry, index) => equivalent(actual[index], entry, fieldPath));
     if (typeof expected === "object") {
         if (!actual || typeof actual !== "object" || Array.isArray(actual))
             return false;
         const record = actual;
         return Object.entries(expected).every(([key, child]) => {
             const match = Object.keys(record).find((candidate) => normalizeKey(candidate) === normalizeKey(key));
-            return Boolean(match) && equivalent(record[match], child);
+            return Boolean(match) && equivalent(record[match], child, [...fieldPath, key]);
         });
     }
     if (typeof actual === "number" || typeof expected === "number") {
@@ -518,7 +657,8 @@ function equivalent(actual, expected) {
     const right = String(expected);
     if (left === right)
         return true;
-    if (!ISO_DATE_TIME.test(left.trim()) || !ISO_DATE_TIME.test(right.trim()))
+    if (!CANVAS_TIMESTAMP_PATHS.has(fieldPath.map(normalizeKey).join("."))
+        || !ISO_DATE_TIME.test(left.trim()) || !ISO_DATE_TIME.test(right.trim()))
         return false;
     const leftDate = Date.parse(left);
     const rightDate = Date.parse(right);
@@ -531,7 +671,17 @@ function normalizeCanvasHtmlSerialization(value) {
     return value.replace(/<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b([^<>]*?)\s*\/>/gi, (_match, tag, attributes) => `<${tag}${attributes.trimEnd()}>`);
 }
 function equivalentAssertion(actual, assertion) {
-    if (equivalent(actual, assertion.expected))
+    if (assertion.inputName === "rubric_association") {
+        const expected = assertionRecord(assertion.expected);
+        if (!Array.isArray(actual) || !expected)
+            return false;
+        const identity = expected.id !== undefined
+            ? { id: expected.id }
+            : { association_id: expected.association_id, association_type: expected.association_type };
+        const matches = actual.filter((association) => equivalent(association, identity));
+        return matches.length === 1 && equivalent(matches[0], expected);
+    }
+    if (equivalent(actual, assertion.expected, assertion.paths[0]))
         return true;
     if (!HTML_ASSERTION_INPUTS.has(assertion.inputName)
         || typeof actual !== "string" || typeof assertion.expected !== "string")

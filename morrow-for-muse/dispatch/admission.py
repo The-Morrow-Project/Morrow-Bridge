@@ -1150,6 +1150,11 @@ def _resolve_param_refs(value, params: dict):
     return value
 
 
+def resolved_policy_entry(entry: dict, params: dict | None) -> dict:
+    """The request values sent by the executor, without changing its subject."""
+    return _resolve_param_refs(entry, params) if params is not None else entry
+
+
 def _render_path(url_template: str, params: dict) -> str:
     """The request path the educator sees: the tenant base dropped and
     every {param} slot filled from params (unfilled slots stay)."""
@@ -1308,7 +1313,7 @@ def mint_approval(entry: dict, params: dict, tenant_base: str | None = None,
     if tenant_base:
         target_block["tenant"] = tenant_base
     for key in ("course_id", "course_name", "term", "object_slot",
-                "object_name"):
+                "object_name", "object_id"):
         if declared_target.get(key) is not None:
             target_block[key] = declared_target[key]
     if target_block:
@@ -2261,12 +2266,13 @@ def _deletes_by_replacing(request: dict) -> bool:
     return False
 
 
-def _is_destructive(entry: dict) -> bool:
+def _is_destructive(entry: dict, params: dict | None = None) -> bool:
     """True when the entry destroys data: HTTP DELETE, a live-proven
     write that replaces a list (Canvas deletes what is not on it), or an
     entry explicitly marked destructive. Destructive writes are the one
     category where the educator's confirm_destructive_writes setting
     can still surface a confirmation inside edit mode."""
+    entry = resolved_policy_entry(entry, params)
     if entry.get("destructive") is True:
         return True
     request = entry.get("request") or {}
@@ -2405,9 +2411,12 @@ def check_mode_authority(entry: dict, params: dict,
     # record. Every other gate already ran in admit() before this hook.
     # Destructive writes still need the educator's explicit yes while
     # their confirm_destructive_writes setting is on.
-    if _is_destructive(entry) and \
+    confirmation = ctx.get("destructive_confirmed")
+    confirmed = isinstance(confirmation, str) and bool(confirmation.strip()) \
+        and not explicit_nonapproval(confirmation)
+    if _is_destructive(entry, params) and \
             _destructive_confirmation_required(user_id) and \
-            not ctx.get("destructive_confirmed"):
+            not confirmed:
         refused(
             user_id, entry_name, course_id, op_id,
             "destructive_confirmation_required",
@@ -2419,7 +2428,7 @@ def check_mode_authority(entry: dict, params: dict,
             "be destroyed and get an explicit yes before retrying with "
             "destructive_confirmed" % (entry_name,),
             entry_name=entry_name, course_id=course_id)
-    if ctx.get("destructive_confirmed"):
+    if confirmed:
         auth = dict(auth or {})
         auth["destructive_confirmed"] = ctx.get("destructive_confirmed")
     if journal:
@@ -2438,9 +2447,11 @@ def check_mode_authority(entry: dict, params: dict,
     return audit, None
 
 
-def check_policy_gates(entry: dict, vault_ready: bool = False) -> None:
+def check_policy_gates(entry: dict, vault_ready: bool = False,
+                       params: dict | None = None) -> None:
     """The policy gates admit() runs first: never-dispatch, unsupported,
     evidence-holds, learner-data. Raises an AdmissionRefused subclass."""
+    entry = resolved_policy_entry(entry, params)
     policy = load_policy()
     check_never_dispatch(entry, policy)
     check_unsupported(entry, policy)
@@ -2481,7 +2492,7 @@ def admit(entry: dict, params: dict, tenant_base: str | None = None,
 
     journal=False (a dry run) journals nothing from the mode gate.
     """
-    check_policy_gates(entry, vault_ready)
+    check_policy_gates(entry, vault_ready, params=params)
     if mode_ctx is not None:
         return check_mode_authority(entry, params, approval, mode_ctx,
                                     tenant_base=tenant_base, op_id=op_id,

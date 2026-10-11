@@ -1780,7 +1780,8 @@ async function reattachSiteAnchor(anchor, lease = null) {
       const stored = await storage();
       const anchors = storedAnchors(stored.siteAnchors);
       const index = anchors.findIndex((entry) => entry.siteAnchorId === anchor.siteAnchorId
-        && entry.origin === anchor.origin && entry.principalId === anchor.principalId);
+        && sameSitePrincipal(entry, anchor) && entry.principalId === anchor.principalId
+        && entry.sessionGeneration === anchor.sessionGeneration);
       if (index < 0) return null;
       const next = { ...anchors[index], tabId: candidate.id };
       await chrome.storage.local.set({ siteAnchors: anchors.map((entry, position) => position === index ? next : entry) });
@@ -1817,7 +1818,14 @@ async function siteAnchorMatches(anchor, { fresh = false, lease = null } = {}) {
     if (kept.probe) return await kept.probe;
     if (kept.matchedAt + ANCHOR_VERIFICATION_TTL_MS > Date.now()) return true;
   }
-  const probe = probeSiteAnchor(anchor, tab).catch(() => false);
+  const probe = (async () => {
+    if (await probeSiteAnchor(anchor, tab).catch(() => false)) return true;
+    const reattached = await reattachSiteAnchor(anchor, lease);
+    if (!reattached) return false;
+    anchor.tabId = reattached.anchor.tabId;
+    tab = reattached.tab;
+    return true;
+  })();
   const entry = { tabId: tab.id, url: tab.url, probe, matchedAt: 0 };
   anchorVerifications.set(siteAnchorId, entry);
   const matched = await probe;

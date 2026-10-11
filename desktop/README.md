@@ -13,7 +13,7 @@ Morrow helps instructors, instructional designers, and course reviewers turn les
 
 Morrow Desktop runs on your computer and connects to an assistant through MCP. The app sets up ChatGPT, Claude Desktop, Claude Code, or Gemini CLI, and the source route sets up those four plus Cursor and VS Code, which the app does not set up. A selected Codex update has passed a live test-course check; each other assistant still needs its own complete live checks. See the [test record](docs/implementation/BT2-LIVE-PROOF.md).
 
-Morrow Desktop 1.0.15 includes first-use guidance and Morrow Bridge 1.0.138.
+Morrow Desktop 1.0.15 includes first-use guidance and Morrow Bridge 1.0.139.
 
 ## What a user installs
 
@@ -535,4 +535,4 @@ See [ARCHITECTURE.md](ARCHITECTURE.md), [LIMITATIONS.md](LIMITATIONS.md), and [S
 
 ## Release status
 
-This checkout contains Morrow Desktop 1.0.15 with Morrow Bridge 1.0.138. Until Morrow Desktop 1.0.15 is published, public downloads remain Mac 1.0.14 and Windows 1.0.14. The exact Morrow Desktop 1.0.14 files passed native platform smoke before publication. No Windows 1.0.6 or 1.0.7 asset was published. Release notes are in [CHANGELOG.md](CHANGELOG.md). Local private and public-candidate source archives are deterministic and include checksums, a stage manifest, and a CycloneDX SBOM. These distribution records do not change the local runtime architecture.
+This checkout contains Morrow Desktop 1.0.15 with Morrow Bridge 1.0.139. Until Morrow Desktop 1.0.15 is published, public downloads remain Mac 1.0.14 and Windows 1.0.14. The exact Morrow Desktop 1.0.14 files passed native platform smoke before publication. No Windows 1.0.6 or 1.0.7 asset was published. Release notes are in [CHANGELOG.md](CHANGELOG.md). Local private and public-candidate source archives are deterministic and include checksums, a stage manifest, and a CycloneDX SBOM. These distribution records do not change the local runtime architecture.

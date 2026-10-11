@@ -1,6 +1,6 @@
-import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import { chmod, lstat, mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createExactPrivateStateFile, readExactPrivateStateFile } from "../src/private-state-file.js";
 
@@ -42,6 +42,30 @@ async function privateFile(): Promise<string> {
 const options = { label: "probe state", maxBytes: 4_096, minBytes: 1 };
 
 describe("readExactPrivateStateFile", () => {
+  it.skipIf(process.platform === "win32")("creates and reads exact private bytes in a parent other principals cannot write", async () => {
+    const path = await privateFile();
+    await chmod(dirname(path), 0o755);
+    const bytes = Buffer.from('{"revision":1}\n');
+    expect(createExactPrivateStateFile(path, bytes, options)).toBe(true);
+    expect(readExactPrivateStateFile(path, options)).toEqual(bytes);
+    const info = await lstat(path);
+    expect(info.mode & 0o777).toBe(0o600);
+    expect(info.nlink).toBe(1);
+    expect(info.uid).toBe(process.getuid!());
+  });
+
+  it.skipIf(process.platform === "win32")("refuses reads and creation when the parent is group-writable", async () => {
+    const path = await privateFile();
+    expect(createExactPrivateStateFile(path, Buffer.from('{"revision":1}\n'), options)).toBe(true);
+    await chmod(dirname(path), 0o775);
+    expect(() => readExactPrivateStateFile(path, options)).toThrow("probe state is not one exact private file");
+    const newPath = join(dirname(path), "new-state.json");
+    expect(() => createExactPrivateStateFile(newPath, Buffer.from('{"revision":2}\n'), options))
+      .toThrow("probe state is not one exact private file");
+    await expect(lstat(newPath)).rejects.toMatchObject({ code: "ENOENT" });
+    expect((await lstat(dirname(path))).mode & 0o777).toBe(0o775);
+  });
+
   it("reads a file whose ctime the kernel refines after the write with nothing else changed", async () => {
     const path = await privateFile();
     drift.ctimeMs = 0.5;

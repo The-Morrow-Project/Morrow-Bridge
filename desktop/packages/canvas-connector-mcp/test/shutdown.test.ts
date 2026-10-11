@@ -171,7 +171,7 @@ async function waitForProcessGone(pid: number, deadlineMs: number): Promise<numb
  * up, so the connector is reparented while its input stays open. The input is a
  * FIFO this test holds, which is what keeps the end-of-input path out of the way.
  */
-async function startOrphanedConnector(directory: string, port: number): Promise<number> {
+async function startOrphanedConnector(directory: string, port: number): Promise<{ pid: number; originalParentPid: number }> {
   const fifo = join(directory, "stdin.fifo");
   const log = join(directory, "connector.log");
   execFileSync("mkfifo", [fifo]);
@@ -210,7 +210,9 @@ async function startOrphanedConnector(directory: string, port: number): Promise<
   expect(exit).toBe(0);
   expect(Number.isInteger(pid) && pid > 1).toBe(true);
   expect(readFileSync(log, "utf8")).toContain(readyLine);
-  return pid;
+  const originalParentPid = parent.pid;
+  expect(Number.isInteger(originalParentPid) && (originalParentPid ?? 0) > 1).toBe(true);
+  return { pid, originalParentPid: originalParentPid! };
 }
 
 describe("canvas connector shutdown", () => {
@@ -226,9 +228,10 @@ describe("canvas connector shutdown", () => {
     async () => {
       const directory = temporaryDirectory();
       const port = await availablePort();
-      const pid = await startOrphanedConnector(directory, port);
+      const { pid, originalParentPid } = await startOrphanedConnector(directory, port);
       // The connector can already have acted on the reparenting by now.
-      if (running(pid)) expect(parentPid(pid)).toBe(1);
+      expect(running(originalParentPid)).toBe(false);
+      if (running(pid)) expect(parentPid(pid)).not.toBe(originalParentPid);
       await waitForProcessGone(pid, orphanDeadlineMs);
       await expectPortFree(port);
     },

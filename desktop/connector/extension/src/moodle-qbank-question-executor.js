@@ -841,7 +841,7 @@ export async function executeMoodleQbankQuestionInPage(rawInput) {
     try {
       dispatched = true;
       response = await fetch(form.action, {
-        method: "POST", credentials: "include", cache: "no-store", redirect: "follow",
+        method: "POST", mode: "same-origin", credentials: "include", cache: "no-store", redirect: "follow",
         headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "text/html" }, body: creationBody(form, args),
         signal: requestSignal(input?.expiresAt),
       });

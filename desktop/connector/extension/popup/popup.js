@@ -85,9 +85,17 @@ function renderReviews(status) {
 }
 
 async function openReview(url) {
-  const [existing] = await chrome.tabs.query({ url });
+  const expected = new URL(url);
+  const candidates = await chrome.tabs.query({ url: `${url}*` });
+  const existing = candidates.find((tab) => {
+    let candidate;
+    try { candidate = new URL(tab.url); } catch { return false; }
+    return candidate.origin === expected.origin && candidate.pathname === expected.pathname && !candidate.hash
+      && [...candidate.searchParams.keys()].every((key) => key === "presence");
+  });
   if (existing?.id !== undefined) {
     await chrome.tabs.update(existing.id, { active: true });
+    if (Number.isInteger(existing.windowId)) await chrome.windows.update(existing.windowId, { focused: true });
     return;
   }
   await chrome.tabs.create({ url });
@@ -490,7 +498,7 @@ askFirstAllCoursesButton.addEventListener("click", async () => {
       showNotice("Done. Morrow asks first in all courses.");
       return;
     }
-    showNotice(`Morrow asks first in ${revoked.length ? revoked.join(", ") : "none of these courses"}. Still Edit-active: ${kept.join(", ")}.`);
+    showNotice(`Morrow asks first in ${revoked.length ? revoked.join(", ") : "none of these courses"}. Edit access removal was not confirmed for ${kept.join(", ")}.`);
     reportError("action", new Error("edit_policy_revoke_unconfirmed"));
   });
 });

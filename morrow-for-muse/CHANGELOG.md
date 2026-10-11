@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.13 (2026-10-11)
+
+Install `morrow-muse-connector-0.4.13.zip` from the `muse/v0.4.13`
+release and verify it with `SHA256SUMS` before unzipping, as described
+in `INSTALL.md`.
+
+- Apply approval rules to the exact request, including nested parameters. Refuse negative or empty confirmation for destructive changes.
+- Keep a reviewed Canvas page bound to its original page ID. Refuse a replacement page even if it has the same title or address.
+- Stop assignment deletion when the assignment belongs to a New Quiz. Use the dedicated quiz operation instead.
+- Report safe session-expiry details from `morrow doctor`. Distinguish a known expiry from unavailable expiry information.
+- Confirm a stored browser sign-in before completing setup. Check the fallback cookie store when a database cannot be read.
+- Show setup checks and first requests for the selected course provider.
+- Ship the current Moodle browser adapters with the documented development-candidate limits. Keep Moodle POST redirects on the signed-in site.
+
 ## 0.4.12 (2026-10-07)
 
 Install `morrow-muse-connector-0.4.12.zip` from the `muse/v0.4.12`

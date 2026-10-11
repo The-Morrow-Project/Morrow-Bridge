@@ -3479,6 +3479,67 @@
     return exactId;
   }
 
+  const RUBRIC_WRITE_KEYS = new Set([
+    "POST /v1/courses/{course_id}/rubrics#create_single_rubric",
+    "PUT /v1/courses/{course_id}/rubrics/{id}#update_single_rubric",
+  ]);
+
+  async function checkRubricCourseScope(operation, args, exactCourseId, expiresAt) {
+    if (!RUBRIC_WRITE_KEYS.has(operation.key)) return false;
+    const assignments = new Set();
+    const read = async (url) => {
+      try { return await pageJson(url, expiresAt); }
+      catch { throw new Error("canvas_rubric_scope_unconfirmed"); }
+    };
+    const checkAssociation = async (type, value) => {
+      const id = pageId(value);
+      if (!id) throw new Error("canvas_rubric_association_unresolved");
+      if (type === "Course") {
+        if (id !== exactCourseId) throw new Error("canvas_rubric_course_mismatch");
+      } else if (type === "Assignment") {
+        if (assignments.has(id)) return;
+        const assignment = await read(new URL(`/api/v1/courses/${exactCourseId}/assignments/${id}`, location.origin));
+        if (!assignment || typeof assignment !== "object" || Array.isArray(assignment)
+          || pageId(assignment.id) !== id || courseId(assignment.course_id) !== exactCourseId) {
+          throw new Error("canvas_rubric_course_mismatch");
+        }
+        assignments.add(id);
+      } else {
+        throw new Error("canvas_rubric_association_unresolved");
+      }
+    };
+    const associationId = args.rubric_association_association_id;
+    const associationType = args.rubric_association_association_type;
+    if (associationId !== undefined || associationType !== undefined) await checkAssociation(associationType, associationId);
+    const rubricId = args.id === undefined ? null : pageId(args.id);
+    if (args.id !== undefined && !rubricId) throw new Error("canvas_rubric_association_unresolved");
+    const joinId = args.rubric_association_id === undefined ? null : pageId(args.rubric_association_id);
+    if (args.rubric_association_id !== undefined && (!joinId || !rubricId)) throw new Error("canvas_rubric_association_unresolved");
+    if (rubricId) {
+      const url = new URL(`/api/v1/courses/${exactCourseId}/rubrics/${rubricId}`, location.origin);
+      url.searchParams.append("include[]", "associations");
+      const rubric = await read(url);
+      if (!rubric || typeof rubric !== "object" || Array.isArray(rubric)
+        || pageId(rubric.id) !== rubricId || rubric.context_type !== "Course" || courseId(rubric.context_id) !== exactCourseId) {
+        throw new Error("canvas_rubric_course_mismatch");
+      }
+      if (!Array.isArray(rubric.associations)) throw new Error("canvas_rubric_scope_unconfirmed");
+      const joins = new Set();
+      // Canvas can edit the rubric in place and resolve an explicit target outside the route's course.
+      for (const association of rubric.associations) {
+        const id = pageId(association?.id);
+        if (!association || typeof association !== "object" || Array.isArray(association)
+          || !id || joins.has(id) || pageId(association.rubric_id) !== rubricId) {
+          throw new Error("canvas_rubric_association_unresolved");
+        }
+        joins.add(id);
+        await checkAssociation(association.association_type, association.association_id);
+      }
+      if (joinId && !joins.has(joinId)) throw new Error("canvas_rubric_association_unresolved");
+    }
+    return true;
+  }
+
   function sameInstant(left, right) {
     if (left === right) return true;
     const leftTime = Date.parse(String(left));
@@ -3573,6 +3634,11 @@
     const profile = await canvasProfile(false, expiresAt);
     if (profile.id !== expectedPrincipalId) throw new Error("canvas_principal_changed");
     await courseJson(exactCourseId, expiresAt);
+    if (await checkRubricCourseScope(operation, args, exactCourseId, expiresAt)) {
+      const currentProfile = await canvasProfile(false, expiresAt);
+      if (currentProfile.id !== expectedPrincipalId) throw new Error("canvas_principal_changed");
+      await courseJson(exactCourseId, expiresAt);
+    }
     const assignmentDueDate = await checkAssignmentDueDateSource(operation, args, url, exactCourseId, expiresAt);
     let canvasContentChange = null;
     let newQuizLifecycle = null;
@@ -3673,9 +3739,13 @@
         options.body = JSON.stringify(json);
       } else if (body.length > 0) {
         const encoded = new URLSearchParams();
-        appendBody(encoded, body.map(([parameter, value]) => (
-          [{ ...parameter, wireName: acceptedWireName(operation, parameter.wireName) }, value]
-        )));
+        appendBody(encoded, body.map(([parameter, value]) => {
+          // Rubric.update_with_association accepts this checkbox only as "1".
+          const wireValue = RUBRIC_WRITE_KEYS.has(operation.key) && parameter.inputName === "rubric_free_form_criterion_comments" && typeof value === "boolean"
+            ? value ? "1" : "0"
+            : value;
+          return [{ ...parameter, wireName: acceptedWireName(operation, parameter.wireName) }, wireValue];
+        }));
         headers.set("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
         options.body = encoded.toString();
       }

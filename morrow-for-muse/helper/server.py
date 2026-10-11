@@ -774,8 +774,8 @@ if os.environ.get("LOGIN_HELPER_PRODUCTION") == "1":
 # genuine first sign-in the cookie store appears mid-run. File existence
 # alone is NOT enough: Chromium creates an empty Cookies DB on first
 # launch, so count rows best-effort (immutable read, no locks taken on
-# the live DB). An unreadable file falls back to True: a Cookies file is
-# still evidence of a used profile.
+# the live DB). An unreadable file does not prove stored cookies; keep
+# checking the other profile layout.
 
 
 def _normalize_tenant_base(base_url):
@@ -810,7 +810,7 @@ def _profile_has_cookies():
             if n and n > 0:
                 return True
         except Exception:
-            return True
+            continue
     return False
 from config.tree_config import lms_base, lms_provider, normalize_lms_base
 

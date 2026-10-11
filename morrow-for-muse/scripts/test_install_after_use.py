@@ -35,6 +35,7 @@ import os
 import re
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 
@@ -277,8 +278,15 @@ def _connect_and_sign_in(tree):
     for rel in USED_PROFILE:
         path = os.path.join(tree, "helper", "profile", rel)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as fh:
-            fh.write("browser state\n")
+        if rel.endswith("/Cookies"):
+            with sqlite3.connect(path) as connection:
+                connection.execute("CREATE TABLE IF NOT EXISTS cookies (value TEXT)")
+                connection.execute("DELETE FROM cookies")
+                connection.execute("INSERT INTO cookies VALUES (?)",
+                                   ("browser state",))
+        else:
+            with open(path, "w") as fh:
+                fh.write("browser state\n")
 
 
 def _assert_signed_in_state_kept(tree):

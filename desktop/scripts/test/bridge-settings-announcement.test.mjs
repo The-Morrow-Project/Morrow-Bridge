@@ -102,6 +102,7 @@ function stubDom(html) {
     addEventListener(type, handler) { (this.listeners[type] ||= []).push(handler); },
     focus() {},
     querySelector: () => null,
+    querySelectorAll: () => [],
   });
   for (const node of elements(html)) {
     const id = node.attributes.id;

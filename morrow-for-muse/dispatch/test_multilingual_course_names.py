@@ -83,7 +83,7 @@ def test_only_the_mixed_word_is_reported():
 
 
 def _canvas(course_name):
-    page = {"url": "week-1", "title": "Old"}
+    page = {"page_id": 7, "url": "week-1", "title": "Old"}
 
     def handler(method, url, body):
         if method == "GET" and url.rstrip("/").endswith("/courses/101"):

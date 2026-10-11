@@ -685,7 +685,7 @@ test("the popup lists the reviews that wait, and a click opens the named one", a
 });
 
 test("a review tab already open is made active instead of opening a second one", async () => {
-  const tabs = [{ id: 7, url: "http://127.0.0.1:44210/operations/op-1" }];
+  const tabs = [{ id: 7, windowId: 4, url: "http://127.0.0.1:44210/operations/op-1" }];
   const page = await openPopup({
     status: () => connection({
       paired: true, connected: true, bindings: [binding()], bindingCount: 1, siteAnchors: [anchor()],
@@ -695,7 +695,45 @@ test("a review tab already open is made active instead of opening a second one",
   });
   await page.click("#reviews-list button");
   assert.deepEqual(page.tabsUpdated, [{ tabId: 7, properties: { active: true } }]);
+  assert.deepEqual(page.windowsUpdated, [{ windowId: 4, properties: { focused: true } }]);
   assert.deepEqual(page.tabsCreated, []);
+});
+
+test("a signed review reuses only its exact route and focuses its Chrome window", async () => {
+  const url = "http://127.0.0.1:44210/operations/op-12345678";
+  const page = await openPopup({
+    status: () => connection({ paired: true, connected: true, reviews: [{ url, label: "Update due date in Anatomy" }] }),
+    tabs: [
+      { id: 1, windowId: 9, url: `${url}-another?presence=${"a".repeat(43)}` },
+      { id: 2, windowId: 9, url: `${url}/approve` },
+      { id: 3, windowId: 9, url: `${url}?unrelated=1` },
+      { id: 4, windowId: 9, url: `${url}?presence=${"a".repeat(43)}#other` },
+      { id: 5, windowId: 9, url: url.replace(":44210", ":44211") },
+      { id: 7, windowId: 4, url: `${url}?presence=${"b".repeat(43)}` },
+    ],
+  });
+  await page.click("#reviews-list button");
+  assert.deepEqual(page.tabsUpdated, [{ tabId: 7, properties: { active: true } }]);
+  assert.deepEqual(page.windowsUpdated, [{ windowId: 4, properties: { focused: true } }]);
+  assert.deepEqual(page.tabsCreated, []);
+});
+
+test("a review opens its own route when every existing tab is a different target", async () => {
+  const url = "http://127.0.0.1:44210/batches/batch-12345678";
+  const page = await openPopup({
+    status: () => connection({ paired: true, connected: true, reviews: [{ url, label: "Update pages in Anatomy" }] }),
+    tabs: [
+      { id: 1, windowId: 9, url: `${url}-another?presence=${"a".repeat(43)}` },
+      { id: 2, windowId: 9, url: `${url}/approve` },
+      { id: 3, windowId: 9, url: `${url}?presence=${"a".repeat(43)}&unrelated=1` },
+      { id: 4, windowId: 9, url: `${url}?presence=${"a".repeat(43)}#other` },
+      { id: 5, windowId: 9, url: url.replace(":44210", ":44211") },
+    ],
+  });
+  await page.click("#reviews-list button");
+  assert.deepEqual(page.tabsUpdated, []);
+  assert.deepEqual(page.windowsUpdated, []);
+  assert.deepEqual(page.tabsCreated, [{ url }]);
 });
 
 test("a disconnected popup lists no review, even one the Bridge still reports", async () => {
@@ -743,7 +781,7 @@ test("a version-mismatched popup keeps its last-known reviews and courses visibl
   assert.equal(page.text("#courses-title"), "Your courses (may be out of date)");
 });
 
-test("Ask first in all courses names which courses returned to Plan and which stayed Edit-active", async () => {
+test("Ask first in all courses names confirmed removals and unconfirmed courses", async () => {
   const page = await openPopup({
     status: () => connection({ paired: true, connected: true, bindings: [binding()], bindingCount: 2, siteAnchors: [anchor()] }),
     handlers: {
@@ -760,8 +798,29 @@ test("Ask first in all courses names which courses returned to Plan and which st
   await page.waitFor(() => page.text("#notice") !== "", "the popup never reported the result");
   // Every course is attempted even after a failure, so the report covers all of them.
   assert.deepEqual(page.messages("morrow_edit_policy_revoke").map((message) => message.sourceBindingId), ["canvas:course-1", "canvas:course-2"]);
-  assert.equal(page.text("#notice"), "Morrow asks first in Anatomy. Still Edit-active: Physiology.");
+  assert.equal(page.text("#notice"), "Morrow asks first in Anatomy. Edit access removal was not confirmed for Physiology.");
   assert.equal(page.hidden("#error"), false);
+  assert.equal(page.text("#error"), problemText("edit_policy_revoke_unconfirmed"));
+});
+
+test("Ask first in all courses continues after a rejected revoke and an unconfirmed revoke", async () => {
+  const courses = ["Anatomy", "Physiology", "Biology"].map((courseName, index) => ({
+    sourceBindingId: `canvas:course-${index + 1}`, courseName, editPermission: editPermission(`canvas:course-${index + 1}`),
+  }));
+  const page = await openPopup({
+    status: () => connection({ paired: true, connected: true, bindings: [binding()], bindingCount: 3, siteAnchors: [anchor()] }),
+    handlers: {
+      morrow_edit_policy_status: () => ({ bindings: courses }),
+      morrow_edit_policy_revoke: ({ sourceBindingId }) => {
+        if (sourceBindingId === courses[0].sourceBindingId) throw new Error("bridge_request_failed");
+        return { revoked: sourceBindingId === courses[2].sourceBindingId };
+      },
+    },
+  });
+  await page.click("#ask-first-all-courses");
+  await page.waitFor(() => page.text("#notice") !== "", "the popup did not report the partial removals");
+  assert.deepEqual(page.messages("morrow_edit_policy_revoke").map((message) => message.sourceBindingId), courses.map((course) => course.sourceBindingId));
+  assert.equal(page.text("#notice"), "Morrow asks first in Biology. Edit access removal was not confirmed for Anatomy, Physiology.");
   assert.equal(page.text("#error"), problemText("edit_policy_revoke_unconfirmed"));
 });
 

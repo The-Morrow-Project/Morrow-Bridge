@@ -30,7 +30,7 @@ def test_expiry_during_provider_precheck_refuses_the_write(monkeypatch, phase):
     class Tab:
         def __init__(self):
             self.calls = []
-            self.page = {"url": "week-1", "title": "Old", "body": "<p>Lesson</p>", "published": True}
+            self.page = {"page_id": 7, "url": "week-1", "title": "Old", "body": "<p>Lesson</p>", "published": True}
         def api(self, method, path, data=None, as_json=False, timeout=60, max_bytes=None):
             self.calls.append((method,path,clock["now"].isoformat()))
             bare=path.split("?")[0]
@@ -52,7 +52,7 @@ def test_expiry_during_provider_precheck_refuses_the_write(monkeypatch, phase):
                     elif phase == "principal": clock["final_principal"] = True
                     clock["armed"] = False
                 result={"id":101,"name":"Bio 101"}
-            elif bare.endswith("/pages/week-1"):
+            elif bare.endswith(("/pages/week-1", "/pages/page_id:7")):
                 if method=="PUT":
                     if phase == "retry" and not clock.get("retried"):
                         clock["retried"] = True

@@ -1100,6 +1100,7 @@ export class BlackboardLearnRuntime {
     // protected field as the frozen value, so a provider that resets a sibling
     // field while it applies the patch fails the readback.
     const expectedAfterPatch = expectedProtectedContent(frozen, patch);
+    await this.assertAuthenticatedPrincipal(scope, "write", signal);
     // Morrow cannot prove a change did not land once the PATCH request has left
     // this process. The marker is set on the line before that request, so every
     // failure from here on is reported as applied_or_unknown, and every refusal

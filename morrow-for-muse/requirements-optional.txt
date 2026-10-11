@@ -1,12 +1,12 @@
 # Optional dependencies for Morrow for Muse (exact pins, tested 2026-09-24).
 #
-# Canvas course-content work by student name needs cryptography. The
-# Moodle session lane needs requests. Install this file before using
+# Canvas course-content work by student name and the Moodle browser
+# privacy boundary need cryptography. Install this file before using
 # either feature. install.sh and every selftest pass without these
 # packages.
 #
-#   requests: Moodle's session-authenticated API and form lane. The
-#     cookie jar and sesskey stay in memory; nothing writes their values.
+#   requests: retained for source-only historical Moodle HTTPS tests.
+#     The installed Moodle browser lane does not use this package.
 #     Latest stable release on PyPI when packaged: 2.34.2.
 #
 #   cryptography: the encrypted learner vault (privacy/core.py). Without
