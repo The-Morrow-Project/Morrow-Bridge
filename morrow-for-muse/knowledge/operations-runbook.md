@@ -176,7 +176,7 @@ readback and cleanup:
   `notify_of_update` (Canvas notifies every student of the change) or
   `as_user_id` (Canvas acts as that person).
 
-Not v1 claims at all: Blackboard (no implementation exists), learner-data operations
+Not v1 claims at all: Blackboard is not shipped, learner-data operations
 (dispatched de-identified only on the Chromium lane with the encrypted
 vault, refused elsewhere; the by-name flow is fixture-proven, not yet
 live-proven), the form relay (retired and excluded), classic

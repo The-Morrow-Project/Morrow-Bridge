@@ -2,7 +2,7 @@
 
 ## Report a security problem
 
-Email [hello@meetmorrow.app](mailto:hello@meetmorrow.app) with a short description and the steps to reproduce it. Do not open a public GitHub issue for a security problem, because anyone can read it before a fix ships.
+Use GitHub private vulnerability reporting. Open the Security tab, then select Report a vulnerability. You can also email [info@morrowproject.org](mailto:info@morrowproject.org) with a short description and the steps to reproduce it. Do not open a public GitHub issue for a security problem, because anyone can read it before a fix ships.
 
 Do not include student information, private course content, passwords, sign-in details, or screenshots that show any of these. We will tell you how to share sensitive detail safely.
 
@@ -10,9 +10,9 @@ The [Security page](https://meetmorrow.app/security) says how soon we answer, wh
 
 ## Which versions get fixes
 
-Morrow Desktop and Morrow for Muse each have their own releases. A fix ships in a new release of the product it affects. A published release never changes, so install the latest release to get a fix:
+Morrow Bridge for Mac and Windows and Morrow for Muse each have their own releases. A fix ships in a new release of the product it affects. A published release never changes, so install the latest release to get a fix:
 
-- Morrow Desktop: download the latest version from [meetmorrow.app/download](https://meetmorrow.app/download) and install it over the old one.
+- Morrow Bridge for Mac and Windows: download the latest version from [meetmorrow.app/download](https://meetmorrow.app/download) and install it over the old one.
 - Morrow for Muse: ask Muse to set it up again from [meetmorrow.app/morrow-for-muse](https://meetmorrow.app/morrow-for-muse).
 
 ## Help with something else

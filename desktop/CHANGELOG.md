@@ -1,18 +1,17 @@
 # Changelog
 
-Release notes for Morrow Desktop. Tags use the form `desktop/vX.Y.Z` (see [docs/versioning.md](../docs/versioning.md)). Published installers are on [GitHub Releases](https://github.com/The-Morrow-Project/Morrow-Bridge/releases). Releases before 1.0.5 have no entry here.
+Release notes for Morrow Bridge for Mac and Windows. Blackboard is not shipped. Tags use the form `desktop/vX.Y.Z` (see [docs/versioning.md](../docs/versioning.md)). Published installers are on [GitHub Releases](https://github.com/The-Morrow-Project/Morrow-Bridge/releases). Releases before 1.0.5 have no entry here.
 
 ## 1.0.15 (2026-10-11)
 
 ### Keep approval reviews open
 
-- For Chrome Web Store updates, Morrow Bridge waits to reload when it cannot confirm that your approval review is closed.
+- For Chrome Web Store updates, the Bridge browser extension waits to reload when it cannot confirm that your approval review is closed.
 - Reuse an open approval review when you return to it. Keep keyboard focus and open action details when course permissions refresh.
 
 ### Check the course before changing it
 
 - Check the selected course before creating or changing a Canvas rubric association. Confirm the rubric and grading scheme fields that you approved after saving.
-- Check the Blackboard account again when sign-in is renewed. Stop a change if the account differs from the one reviewed.
 - Keep Moodle form submissions on the signed-in course site. Recover a course connection when its old browser tab has signed out.
 - Check an approved correction through the same course and account review as a new change. Rechecking a completed operation keeps its verified result.
 
@@ -30,13 +29,13 @@ Release notes for Morrow Desktop. Tags use the form `desktop/vX.Y.Z` (see [docs/
 
 ### Technical notes
 
-- Include Morrow Bridge 1.0.139. Defer a Chrome Web Store update reload when session storage cannot be read or its stored approval record is malformed.
+- Include Morrow Bridge Extension 1.0.139. Defer a Chrome Web Store update reload when session storage cannot be read or its stored approval record is malformed.
 - Normalize Canvas rate telemetry at the connector boundary and preserve per-source batch budgets. Bind correction dispatch to fresh authority and preserve immutable verified states.
-- Refuse foreign Moodle POST redirects before credentials leave the course site. Bind Blackboard write retries to a fresh, token-specific principal check.
+- Refuse foreign Moodle POST redirects before credentials leave the course site.
 - Add focused regressions for rubric scope and exact readback, connection cancellation, installer recovery, configured Codex homes, and passive permission refresh.
 - Honor the configured `CODEX_HOME` folder for Codex CLI setup and connections.
 - Run the registered Store-update regressions in the existing Desktop CI gate.
-- Clarify that an engineering MCP archive cannot prepare the Bridge folder needed for course pairing. Complete course setup uses Morrow Desktop or the existing source installation.
+- Clarify that an engineering MCP archive cannot prepare the Bridge folder needed for course pairing. Complete course setup uses Morrow Bridge or the existing source installation.
 
 ## 1.0.14 (2026-10-07)
 
@@ -51,7 +50,7 @@ Release notes for Morrow Desktop. Tags use the form `desktop/vX.Y.Z` (see [docs/
 ### Technical notes
 
 - Fix Windows `.cmd` launcher quoting so CLI version checks succeed, including paths with spaces and special characters.
-- Update vulnerable dependencies and refresh the Canvas API catalog from its current authoritative input. Include the refreshed catalog in Morrow Bridge 1.0.137.
+- Update vulnerable dependencies and refresh the Canvas API catalog from its current authoritative input. Include the refreshed catalog in Morrow Bridge Extension 1.0.137.
 - Add a signed release path that checks the final package before native installation tests.
 
 ## 1.0.13 (2026-10-03)
@@ -68,11 +67,11 @@ Release notes for Morrow Desktop. Tags use the form `desktop/vX.Y.Z` (see [docs/
 
 ### Technical notes
 
-This release includes Morrow Bridge 1.0.136 and unsigned installers for Mac with Apple silicon and Windows x64. It keeps the existing account, permission, approval, and recovery contracts. Desktop 1.0.12 assets remain available unchanged.
+This release includes Morrow Bridge Extension 1.0.136 and unsigned installers for Mac with Apple silicon and Windows x64. It keeps the existing account, permission, approval, and recovery contracts. Desktop 1.0.12 assets remain available unchanged.
 
 ## 1.0.12 (2026-10-03)
 
-This release includes Morrow Bridge 1.0.136 and unsigned installers for Mac with Apple silicon and Windows x64.
+This release includes Morrow Bridge Extension 1.0.136 and unsigned installers for Mac with Apple silicon and Windows x64.
 
 - Keep a failed batch review from approving only some of its changes. A failed review leaves the whole batch awaiting approval.
 - Require a new review for previously staged work after you disconnect an account and pair it again.
@@ -92,7 +91,7 @@ This release includes Morrow Bridge 1.0.136 and unsigned installers for Mac with
 
 ## 1.0.11 (2026-10-02)
 
-This release includes Morrow Bridge 1.0.135 and unsigned installers for Mac with Apple silicon and Windows x64.
+This release includes Morrow Bridge Extension 1.0.135 and unsigned installers for Mac with Apple silicon and Windows x64.
 
 - Name the assistant you already use as the workplace. Setup, the Bridge popup, and the site now say course work happens in ChatGPT, Claude, or Gemini, never in a separate Morrow window.
 - Keep Bridge review and course lists visible through a version mismatch, labeled as possibly out of date, until one reload reconnects.
@@ -112,7 +111,7 @@ This release includes Morrow Bridge 1.0.135 and unsigned installers for Mac with
 
 ## 1.0.10 (2026-10-02)
 
-This release includes Morrow Bridge 1.0.134 and unsigned installers for Mac with Apple silicon and Windows x64.
+This release includes Morrow Bridge Extension 1.0.134 and unsigned installers for Mac with Apple silicon and Windows x64.
 
 - Prove every Canvas file upload target before sending. A folder, group, or section upload is checked against the selected course first, so a target in another course is refused before anything is uploaded.
 - Approve AI conversation and experience deletions one at a time. They are no longer covered by standing permission, since a conversation can hold a learner's session.
@@ -131,11 +130,11 @@ This release includes Morrow Bridge 1.0.134 and unsigned installers for Mac with
 
 ## 1.0.9 (2026-10-01)
 
-This release includes Morrow Bridge 1.0.134 and unsigned installers for Mac with Apple silicon and Windows x64.
+This release includes Morrow Bridge Extension 1.0.134 and unsigned installers for Mac with Apple silicon and Windows x64.
 
 - Approve each deletion separately. Morrow no longer grants standing permission to delete course content; every delete is prepared on its own with the exact item, so you approve them one at a time. Your own bookmarks, planner notes, favorites, and read state still work without asking each time.
 - Withdraw course-data consent from Plan and Edit settings. Withdrawing disconnects Morrow, removes its saved courses and permissions, and returns every surface to the consent question.
-- Reload Morrow Bridge from the popup when the app and Bridge versions do not match, instead of opening the Chrome extensions page.
+- Reload the Bridge browser extension from the popup when the app and Bridge versions do not match, instead of opening the Chrome extensions page.
 - Read clearer explanations when a review cannot be signed, and retry an update from the setup window when Morrow is busy instead of reaching a dead end.
 
 ### Approvals and Edit access
@@ -146,11 +145,11 @@ This release includes Morrow Bridge 1.0.134 and unsigned installers for Mac with
 
 - Canvas DELETE routes are review-only unless they touch only educator-owned preference state (bookmarks, planner, favorites, stream, subscriptions, read state, AI chats). The exemption list fails closed.
 - Consent withdrawal disconnects the connector, removes the consent key, and invalidates the course-data authority generation; the worker accepts withdrawal only from a settings-page sender and explains `bridge_consent_sender_refused` on other senders.
-- Blackboard token exchange carries no caller signal per waiter and aborts cleanly; Item Bank execution returns no tabs for an unrecognized origin.
+- Item Bank execution returns no tabs for an unrecognized origin.
 
 ## 1.0.8 (2026-10-01)
 
-This release includes Morrow Bridge 1.0.130 and unsigned installers for Mac with Apple silicon and Windows x64.
+This release includes Morrow Bridge Extension 1.0.130 and unsigned installers for Mac with Apple silicon and Windows x64.
 
 - Pair Canvas or Moodle accounts once. Choose Selected courses to restrict access to courses you allow, or Account access to work across available courses. Switching modes keeps the pairing. Site-wide actions require Account access. New courses start in Plan; Edit permission stays separate.
 - Give your assistant course names, course IDs, or course links. Neither mode has a course-count limit. Account access refreshes courses automatically, saves progress for large scans, and sends large inventories in bounded parts.
@@ -166,9 +165,9 @@ This release includes Morrow Bridge 1.0.130 and unsigned installers for Mac with
 
 ## 1.0.7 (2026-09-25)
 
-This Mac release includes the unsigned `Morrow-1.0.7-mac-arm64.dmg` and `Morrow-1.0.7-mac-arm64.zip`, with Morrow Bridge 1.0.126. Windows remains on the published 1.0.5 installer; there is no Windows 1.0.7 installer or native Windows 1.0.7 smoke receipt.
+This Mac release includes the unsigned `Morrow-1.0.7-mac-arm64.dmg` and `Morrow-1.0.7-mac-arm64.zip`, with Morrow Bridge Extension 1.0.126. Windows remains on the published 1.0.5 installer; there is no Windows 1.0.7 installer or native Windows 1.0.7 smoke receipt.
 
-### Morrow Bridge
+### Bridge browser extension
 
 - If the saved connection to Morrow stops working, **Check connection** in the Bridge popup tries that connection again and shows the next step if Morrow refuses it.
 
@@ -179,11 +178,11 @@ This Mac release includes the unsigned `Morrow-1.0.7-mac-arm64.dmg` and `Morrow-
 
 ### Setup
 
-- The first **Add Morrow Bridge** step now shows what to do next. It no longer starts with a connection warning or calls the Chrome setup method temporary. If Morrow still cannot confirm the connection later, it shows the warning and the exact Bridge folder to select with **Load unpacked**.
+- The first **Add the Bridge browser extension** step now shows what to do next. It no longer starts with a connection warning or calls the Chrome setup method temporary. If Morrow still cannot confirm the connection later, it shows the warning and the exact Bridge folder to select with **Load unpacked**.
 
 ### Technical notes
 
-- Morrow Bridge 1.0.126 seals the extension source included in this Desktop version.
+- Morrow Bridge Extension 1.0.126 seals the extension source included in this Desktop version.
 - No Windows 1.0.7 package or native Windows 1.0.7 smoke receipt exists. The Windows download remains `Morrow-1.0.5-win-x64.exe`.
 
 ## 1.0.6 (2026-09-25)
@@ -192,7 +191,7 @@ This Mac release includes the unsigned `Morrow-1.0.6-mac-arm64.dmg` and `Morrow-
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Open it with Morrow Bridge connected and select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Open it with the Bridge browser extension connected and select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Course reviews
 
@@ -206,20 +205,20 @@ This Mac release includes the unsigned `Morrow-1.0.6-mac-arm64.dmg` and `Morrow-
 
 ## 1.0.5 (2026-09-24)
 
-Unsigned installers: `Morrow-1.0.5-mac-arm64.dmg`, `Morrow-1.0.5-mac-arm64.zip`, and `Morrow-1.0.5-win-x64.exe`. Morrow Desktop ships with Morrow Bridge 1.0.123.
+Unsigned installers: `Morrow-1.0.5-mac-arm64.dmg`, `Morrow-1.0.5-mac-arm64.zip`, and `Morrow-1.0.5-win-x64.exe`. Morrow Bridge ships with Morrow Bridge Extension 1.0.123.
 
 This release fixes the problems a full review of Morrow found before release. Technical notes for developers are at the end.
 
 ### Approvals and Edit access
 
-- A change is approved only from Morrow Bridge in your own Chrome tab. Another program on your computer can no longer approve a change.
-- Morrow Bridge pairs with Morrow only when you select Connect Morrow, and only with a proof from the Bridge folder Morrow set up. Another program on your computer can no longer connect itself to Morrow in place of Morrow Bridge and then approve changes. The Chrome page that asked you to allow the connection is gone.
+- A change is approved only from the Bridge browser extension in your own Chrome tab. Another program on your computer can no longer approve a change.
+- the Bridge browser extension pairs with Morrow only when you select Connect Morrow, and only with a proof from the Bridge folder Morrow set up. Another program on your computer can no longer connect itself to Morrow in place of the Bridge browser extension and then approve changes. The Chrome page that asked you to allow the connection is gone.
 - Edit access has no time limit. Old timed grants fall back to Plan and are never extended.
-- When your assistant asks to turn on Edit, it gives you a link to a Morrow page that names each course and kind of change. Edit turns on only when you open that page in Chrome, with Morrow Bridge connected, and select Turn on Edit. Before, Edit turned on when you accepted a prompt in your assistant. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
+- When your assistant asks to turn on Edit, it gives you a link to a Morrow page that names each course and kind of change. Edit turns on only when you open that page in Chrome, with the Bridge browser extension connected, and select Turn on Edit. Before, Edit turned on when you accepted a prompt in your assistant. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 - Turn on Edit on an Edit access review adds the kinds of change your assistant asked for to what the course already has. It used to end every other Edit choice for that course, including removals you turned on in Plan and Edit settings. After you turn Edit on, the page lists every change Morrow now makes without asking.
 - Your assistant can no longer ask for Edit on an action that can change many settings at once, such as Edit an assignment. Edit never covered those actions, and Morrow still asks before each one, but the review page used to list them as changes Morrow makes without asking.
 - A review that is waiting ends when its Morrow connection ends.
-- A change Morrow could not check is closed only by you, on its page in Chrome, with "I checked it in Canvas: close this change". Morrow Bridge confirms your own click, as for an approval. Your assistant can no longer close it for you.
+- A change Morrow could not check is closed only by you, on its page in Chrome, with "I checked it in Canvas: close this change". The Bridge browser extension confirms your own click, as for an approval. Your assistant can no longer close it for you.
 - When Morrow reads the learning platform after a change and the platform does not hold the approved result, the change shows Did not save as approved and the assistant is told it failed. Before, it showed Needs checking, as if Morrow could not read the result. A change Morrow could not compare still shows Needs checking.
 - Routine Edit and the publish choice no longer create a Canvas page, or publish a new front page, without your review. When the page is not there, or Morrow cannot read it, the change waits for your review.
 - The Routine edits description names every change the routine set makes with no review, including making Canvas folders, moving files between folders, and moving module items. It describes only the platforms you selected.
@@ -230,10 +229,10 @@ This release fixes the problems a full review of Morrow found before release. Te
 - In a group of changes, a change that the learning platform did not save as approved is reported to your assistant as failed, as its review page shows, and the group pauses before its next change. It used to be reported as one that needs checking.
 - Recent changes offers a Reverse change request only for a change that was sent. A cancelled or failed request says nothing was sent, so there is nothing to undo.
 - While a review of a group of changes is open, or Morrow is applying approved work, the assistant keeps waiting. It says you approved only when you did.
-- After your computer sleeps, Chrome restarts, or Morrow Bridge reloads, the popup lists the reviews that still wait, and an open review tab can approve again.
-- Replies about a group of requests no longer name Canvas for a Moodle or Blackboard course.
+- After your computer sleeps, Chrome restarts, or the Bridge browser extension reloads, the popup lists the reviews that still wait, and an open review tab can approve again.
+- Replies about a group of requests no longer name Canvas for a Moodle course.
 
-### Morrow Bridge
+### Bridge browser extension
 
 - The popup shows Edit status and can return a course to Plan.
 - Settings and the popup show the Edit actions a course allows, and one course can be disconnected on its own.
@@ -241,12 +240,12 @@ This release fixes the problems a full review of Morrow found before release. Te
 - When a course site is closed, Morrow names the right button: Open Canvas or Open Moodle.
 - Long permission and privacy text is behind disclosures. Setup, recovery, and help text name only controls that exist.
 - Open Canvas and Open Moodle reopen the course's own site. They used to open another saved site's home page and report success.
-- When Morrow and Morrow Bridge versions do not match, the popup says Reload needed, and the popup and the setup guide give the same reload step.
+- When Morrow and the Bridge browser extension versions do not match, the popup says Reload needed, and the popup and the setup guide give the same reload step.
 - Connect Morrow with the Morrow app closed says Morrow is not running.
 - When Morrow refuses the saved connection, the setup guide offers Reconnect Morrow, as the popup does. The popup's main button does what its label says.
 - The settings page is named Plan and Edit settings, the name every link to it uses. Its error messages stay on screen after the page reads the course list again.
 - The course search also finds a site address, a term, or a platform.
-- With no course connected, Plan and Edit settings names the step that connects one: Connect this course in the Morrow Bridge popup.
+- With no course connected, Plan and Edit settings names the step that connects one: Connect this course in the Bridge browser extension popup.
 - A closed course is listed as closed, with Open Canvas or Open Moodle, even when its Edit access is out of date.
 - The popup says when a course was connected. It used to call that date the last check.
 - The setup guide no longer says every change waits for your review when a course is in Edit.
@@ -256,33 +255,31 @@ This release fixes the problems a full review of Morrow found before release. Te
 - A Private Chat follow-up that names no student, such as "Make it shorter", can be sent without a student list.
 - A Private Chat message that was not sent says why and what to do, and keeps your text.
 - At its 100-message limit, Private Chat ends after the last reply, and the drawer says how to start a new chat.
-- When Morrow Bridge is not connected, or another Private Chat is already open, Private Chat says so and names the step that fixes it.
+- When the Bridge browser extension is not connected, or another Private Chat is already open, Private Chat says so and names the step that fixes it.
 
 ### Setup
 
 - ChatGPT and Codex now start even when Morrow cannot. Morrow finds, repairs, and removes its own entry in their settings file and leaves the rest of the file as it was. When it cannot change the file, it says why.
 - A "Quit and reopen" step checks that the assistant really connected.
 - On a Mac, Morrow offers to move itself to Applications when it runs from somewhere else.
-- The start, repair, Bridge update, and move steps use plain words. Update Bridge says that Morrow asks Chrome to reload Morrow Bridge, and the move step says Morrow is not in your Applications folder. It used to say Morrow ran from a disk image or a download folder.
+- The start, repair, Bridge update, and move steps use plain words. Update Bridge says that Morrow asks Chrome to reload the Bridge browser extension, and the move step says Morrow is not in your Applications folder. It used to say Morrow ran from a disk image or a download folder.
 - The exact Bridge folder is shown with a Copy button. Long folder paths wrap.
 - Morrow really checks whether Claude Desktop is installed, including Claude Desktop from the Microsoft Store on Windows.
 - Removal keeps a settings file's own permissions and refuses a read-only file.
 - On a busy Windows computer, confirming the Claude Desktop app could take longer than Morrow waited, and Morrow then asked for approval in Claude Desktop again. Morrow now waits up to 10 seconds, says it is still checking, and checks again on its own. Messages between Claude Desktop and Morrow keep flowing during the check.
 - Morrow starts faster on Windows: it checks each private file once per start instead of once per read.
-- A newer Morrow Bridge in the app no longer stops setup when Chrome has not loaded the Bridge or is closed. Update Bridge appears only while Morrow Bridge is connected. With no Bridge connected, Check Bridge replaces the Bridge folder with the newer files. A failed update names only the steps on the Update screen.
-- When an open assistant or a running change keeps Morrow busy, saving, choosing, or removing a Blackboard connection says so. It no longer blames the web address, key, or secret.
+- A newer the Bridge browser extension in the app no longer stops setup when Chrome has not loaded the Bridge or is closed. Update Bridge appears only while the Bridge browser extension is connected. With no Bridge connected, Check Bridge replaces the Bridge folder with the newer files. A failed update names only the steps on the Update screen.
 - Remove Morrow's data, and any other step an open assistant blocks, says to quit the assistant. It no longer says to wait for work that never ends.
 - When the materials folder is moved, renamed, deleted, or on a drive that is not connected, Home names the folder and offers Choose folder, and Make the folder again for Morrow's own folder. It no longer says Morrow is getting ready.
 - What stays on this computer, the uninstall steps, and the removal confirmation name the copy of the Morrow extension Claude Desktop keeps, and say to remove Morrow in Claude Desktop under Settings, Extensions. They no longer say that Remove Morrow's data stops every assistant from starting Morrow.
 - Morrow finds Gemini CLI by reading its installed package instead of running it, so detection no longer writes to your Gemini folder and no longer misses a slow first start.
 - The app says where unsigned builds get updates. The Mac note now says that moving Morrow to Applications can ask for an administrator password.
-- Setting up or updating Morrow Bridge no longer fails when Windows is slow.
+- Setting up or updating the Bridge browser extension no longer fails when Windows is slow.
 - Errors from the Settings page now show on the Settings page.
 - The Materials folder row has Show folder and Copy path, because the folder Morrow makes sits inside a folder macOS and Windows hide.
 - Canvas file uploads can use files you put in the Materials folder, as Moodle uploads already could.
 - Check connection says when Morrow could not read your course, with the step to fix it. It no longer calls that course connected.
-- Selecting Check Bridge before Chrome reloaded Morrow Bridge names the reload step.
-- Blackboard error steps name only the fields and buttons the form shows. The saved connection note says a new secret needs the application key too.
+- Selecting Check Bridge before Chrome reloaded the Bridge browser extension names the reload step.
 - The Windows uninstall steps name the Settings page each version shows: Installed apps, then More and Uninstall on Windows 11, and Apps & features, then Uninstall on Windows 10.
 - "What stays on this computer" lists only what is on this computer, and says which part Remove Morrow's data removes and which part Morrow never removes.
 - After Change folder, "What stays on this computer" names the Materials folder Morrow made first, and Remove Morrow's data removes it with its files. It used to leave that folder behind and say Morrow removed its data.
@@ -292,9 +289,9 @@ This release fixes the problems a full review of Morrow found before release. Te
 ### Privacy
 
 - Student IDs inside grade, submission, and profile links are replaced with labels.
-- Each student has one label everywhere. Real names appear only in Morrow Bridge in your own Chrome tab (Private Chat and the review tab). Any other program on your computer that asks Morrow for course information gets labels only.
+- Each student has one label everywhere. Real names appear only in the Bridge browser extension in your own Chrome tab (Private Chat and the review tab). Any other program on your computer that asks Morrow for course information gets labels only.
 - Private Chat reads a sentence start correctly through quotes and line breaks.
-- Morrow Bridge forgets the student names a review page showed 15 minutes after the page last showed them, even when nothing else changes, and a Bridge that reconnects no longer gets old names back.
+- the Bridge browser extension forgets the student names a review page showed 15 minutes after the page last showed them, even when nothing else changes, and a Bridge that reconnects no longer gets old names back.
 - A first name used alone, such as Will or Grace, is replaced only where it is written with a capital letter, as a family name already was. In small letters it is usually an ordinary word, and replacing it put the student's full name into text the assistant saved. A name part in a script with no capital letters, such as Korean, is now replaced wherever it appears.
 - A student's family name written alone, such as "Adams replied.", is replaced with the student's label in Private Chat and in course text the assistant reads, where it is written with a capital letter. A suffix such as Jr. is not taken for the family name.
 - Private Chat replaces a student's ID number or a login made only of numbers, and refuses a message that still holds one.
@@ -314,7 +311,7 @@ This release fixes the problems a full review of Morrow found before release. Te
 
 ### Not verified for this release
 
-- The new steps on live Canvas, Moodle, or Blackboard courses.
+- The new steps on live Canvas courses. Moodle is an early development version and needs live testing.
 - Connect Morrow in an everyday Chrome with the Bridge folder an installed Morrow set up. Morrow's own tests run the same step in a test copy of Chrome with a test folder.
 - The Windows-only cases, such as Claude Desktop from the Microsoft Store and files another program keeps open, on a real Windows computer.
 - Signed installers: this release is not signed by Apple or Microsoft.

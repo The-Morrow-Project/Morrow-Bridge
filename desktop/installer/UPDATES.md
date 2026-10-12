@@ -1,6 +1,6 @@
 # Desktop update maintainer guide
 
-This guide defines the update boundary for the packaged Morrow Desktop app. It
+This guide defines the update boundary for the packaged Morrow Bridge app. It
 does not publish a release. The fixed future provider is GitHub repository
 `The-Morrow-Project/morrow-downloads`, channel `latest`, with feed ID
 `morrow-github-stable`. The repository has no signed public release yet, so the
@@ -313,11 +313,11 @@ update on either platform is **live-unverified** for the same reason: it needs a
 macOS Developer ID identity with notarization, a Windows publisher certificate,
 and a Windows host.
 
-The desktop updater does not modify Morrow Bridge as part of an app update.
+The desktop updater does not modify the Bridge browser extension as part of an app update.
 Bridge maintenance uses the separate contract below. It changes only the
 app-owned unpacked Bridge directory and refuses a Chrome Web Store installation.
 
-## Morrow Bridge update boundary
+## Bridge browser extension update boundary
 
 The temporary unpacked Bridge procedure remains developer-only. The desktop app
 now maintains one app-owned stable Bridge directory. Chrome must load that exact
@@ -386,7 +386,7 @@ browser POST, or an uncertain outcome.
 
 Chrome Web Store publication owns the Store package, version increase, review,
 permission acceptance, staged rollout, and rollback. A permission change needs
-Store review and user acceptance. Morrow Desktop must not bypass that process or
+Store review and user acceptance. Morrow Bridge must not bypass that process or
 claim that it updated the Bridge. The Store account must also complete the
 required privacy and permission review before the temporary developer mode
 instructions can be retired.

@@ -145,9 +145,8 @@ live battery marks them live-proven in
 
 ## Out for v1
 
-- Blackboard. No implementation exists: no auth, no lane, no transport,
-  no catalog, no proof. An honestly-disclosed roadmap item, not a v1
-  ship criterion.
+- Blackboard is not shipped. No implementation exists: no auth, no lane, no transport,
+  no catalog, and no proof.
 - Learner-data operations: every operation whose response carries
   people (rosters, enrollments, submissions, grades, collaborators,
   activity, per-student dates and overrides, edit history). The
@@ -173,7 +172,7 @@ live battery marks them live-proven in
   page body, an assignment description), restoring the real text when
   content is saved back (`privacy/course_content.py`). It is a privacy
   control, not a capability, and it is fixture-proven like the by-name
-  flow: the roster read (the same Canvas requests Morrow Desktop
+  flow: the roster read (the same Canvas requests Morrow Bridge
   makes) has not yet been run through this lane against a live
   course.
 - Discussions: C-139 (create), C-141 (delete), and C-167 (update) are

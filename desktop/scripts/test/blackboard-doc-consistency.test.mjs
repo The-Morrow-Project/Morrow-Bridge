@@ -112,21 +112,11 @@ test("the scope document states the registry's own counts", () => {
   );
 });
 
-test("the README Blackboard surface names every tool a person can reach, and no private one", () => {
-  const surface = section(read(README), "## Blackboard capability surface");
-  const named = new Set([...surface.matchAll(/`((?:morrow_blackboard|blackboard)_[a-z_]+)`/g)].map((match) => match[1]));
-
-  const publicTools = catalog.tools.filter((tool) => !tool.private).map((tool) => tool.tool);
-  assert.deepEqual(
-    publicTools.filter((name) => !named.has(name)), [],
-    `add these Blackboard tools to "## Blackboard capability surface" in ${README}`,
-  );
-
-  const privateTools = catalog.tools.filter((tool) => tool.private).map((tool) => tool.tool);
-  assert.deepEqual(
-    privateTools.filter((name) => named.has(name)), [],
-    `${README} offers a private Blackboard source tool as if a person could call it`,
-  );
+test("the public README does not offer a Blackboard capability surface", () => {
+  const readme = read(README);
+  assert.doesNotMatch(readme, /^## Blackboard capability surface/m, `${README} must not offer a Blackboard capability surface`);
+  assert.match(readme, /Blackboard is not shipped/, `${README} must say Blackboard is not shipped`);
+  assert.doesNotMatch(readme, /`(?:morrow_plan_blackboard|blackboard)_[a-z_]+`/, `${README} must not name Blackboard tools as available`);
 });
 
 test("no Blackboard claim says the route waits on a browser connection", () => {

@@ -1,6 +1,6 @@
-# Accessibility catalog (ported from Morrow Desktop)
+# Accessibility catalog (ported from Morrow Bridge)
 
-This directory ports the Morrow Desktop accessibility audit system
+This directory ports the Morrow Bridge accessibility audit system
 (`packages/mcp-server/src/course-audit.ts`, `page-correction.ts`,
 `item-bank-repair.ts`) into Morrow for Muse catalog entries. It is the
 missing a11y scanner: read-only signal detection plus ten guarded
@@ -124,7 +124,7 @@ repository: `python3 catalog/a11y/a11y_parity_selftest.py` and
    pass.
 5. **Moodle file bytes are never read.** Resource/Folder reads return file
    metadata only.
-6. **Blackboard is not implemented.** There is no Blackboard auth lane,
+6. **Blackboard is not shipped.** There is no Blackboard auth lane,
    no Blackboard transport, and the provider enum is canvas/moodle only.
    No Blackboard audit operation exists, so Blackboard results are not
    available in any status.

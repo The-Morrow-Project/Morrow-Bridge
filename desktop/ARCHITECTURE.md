@@ -1,11 +1,11 @@
 # Architecture
 
-Morrow is one local operations layer between an MCP-compatible AI client and a course platform. Canvas and Moodle work through a signed-in Chrome session. Blackboard works through the official Anthology Learn REST API with a local credential and no browser, and no live Blackboard tenant has been tested. [LIMITATIONS.md](LIMITATIONS.md) holds the canonical platform sentence and the evidence for each platform.
+Morrow is one local operations layer between an MCP-compatible AI client and a course platform. Canvas works through a signed-in Chrome session. Moodle is an early development version and needs live testing. Blackboard is not shipped. [LIMITATIONS.md](LIMITATIONS.md) holds the canonical platform sentence and the evidence for each platform.
 
 ```text
-Morrow Desktop
+Morrow Bridge
   writes the client configuration, verifies the sealed MCP payload,
-  delivers Morrow Bridge, writes the optional Blackboard tenant file
+  and delivers the Bridge browser extension
                          |
                          | sets up and repairs; not in the request path
                          v
@@ -16,23 +16,21 @@ ChatGPT/Codex, Claude, Gemini, or another MCP client
                   Morrow MCP server
        catalog | policy | journal | batches | privacy
                          |
-        +----------------+------------------+
-        |                                   |
-        | internal stdio child              | internal stdio child
-        v                                   v
-  Browser connector MCP               Blackboard REST server
-  Canvas and Moodle catalogs          one configured tenant, live-untested
-        |                                   |
-        | authenticated loopback            | HTTPS with a local
-        | WebSocket on 127.0.0.1:32147      | integration credential
-        v                                   v
-  Morrow Bridge, Chrome MV3           Anthology Learn REST API
-        |
-        | signed-in Chrome session
-        |
-        +--> Canvas API and New Quizzes Item Bank frames
-        |
-        +--> Moodle course forms and AJAX endpoints
+                         | internal stdio child
+                         v
+              Browser connector MCP
+              Canvas and Moodle catalogs
+                         |
+                         | authenticated loopback
+                         | WebSocket on 127.0.0.1:32147
+                         v
+     Morrow Bridge Extension, Chrome MV3
+                         |
+                         | signed-in Chrome session
+                         |
+                         +--> Canvas API and New Quizzes Item Bank frames
+                         |
+                         +--> Moodle course forms and AJAX endpoints
 ```
 
 The MCP client is replaceable. The browser session is replaceable. Morrow's operation IDs, approval rules, effect receipts, result envelope, batch records, and verification states stay the same for every platform.
@@ -80,7 +78,7 @@ The child is an implementation detail of the Morrow MCP installation. Users do n
 
 ### Chrome extension
 
-The Manifest V3 extension, Morrow Bridge, initiates the loopback connection. It has no side panel, and its only chat interface is the Private Chat drawer in its settings page.
+The Manifest V3 extension, the Bridge browser extension, initiates the loopback connection. It has no side panel, and its only chat interface is the Private Chat drawer in its settings page.
 
 The extension owns:
 
@@ -117,28 +115,20 @@ It strips session keys, state keys, CSRF fields, tokens, and draft item IDs from
 
 `connector/extension/src/moodle-gradebook-executor.js` is a separate module with a narrow surface. It reads the gradebook configuration of one course, and its only change is a rename of one grade category or one manual grade item. It reads no student name, no student grade, and no stored grade value, and it changes nothing except the one reviewed name.
 
-### Blackboard REST client
+### Blackboard
 
-The root server starts `packages/blackboard-learn-api` as a second internal stdio child, `blackboard-rest`. It starts it only in the `private-full` profile, and only when the local Blackboard configuration file exists. No live Blackboard tenant has been tested, so every statement in this section is proved against local mocked-HTTPS tests only.
-
-No browser takes part in this route. The child reads one local configuration: one HTTPS tenant origin, one application key, one locally stored application secret, one integration account, and the course bindings derived from that exact tenant account and course. It requests an OAuth2 client-credentials token from that origin and sends every request with that token. Its tools are defined in that package's own operation registry, not in the generated Canvas catalog.
-
-Morrow's client-facing Blackboard operations are this child's reads and the root server's plan tool. Each read answers under its own name when the tool surface is `full`, and under the same name through `morrow_capability_read` when the tool surface is `compact`, which is the one the desktop app configures. The plan tool reads the integration account, that account's course membership, the learner roster, the course, and the content item through the child, then freezes the exact patch, the effect scope, and the readback comparator for review. Planning sends no PATCH request.
-
-The apply and verification routes are private. The child registers them only for the Gateway process that launched it, under a dispatch secret that Gateway creates for that one process. The apply route checks the signed one-use effect grant and the exact reviewed plan digest before any provider read, re-reads the item, and refuses when a frozen protected field changed after review.
-
-Learner identities are redacted inside this child before any result leaves it. When it cannot read the whole course roster, cannot resolve one course membership to a person, or cannot remove every learner identity from a field, it returns nothing from that course and names that condition. A result from this child then passes two Morrow boundaries: the source-result projection and the MCP egress boundary. Neither one applies the Canvas and Moodle roster lookup to it. Morrow holds no course roster for this source and can register none, so a roster requirement at either boundary would refuse every Blackboard result instead of protecting one. A result from this child that still carried a learner identity is refused there. Morrow decides this from the source that answered and the capability Morrow invoked, not from the `source_binding_id` in the request, so a Canvas or Moodle call cannot reach the exemption by naming a Blackboard binding. Every other projection still applies to a Blackboard result: secret fields, identity value fields, sensitive text, and the record and byte limits. [LIMITATIONS.md](LIMITATIONS.md) holds the exact operation, refusal, and evidence limits for this route.
+Blackboard is not shipped. It is not a supported learning platform.
 
 ### Desktop app and installer
 
-Morrow Desktop is an Electron application in `installer/`. It sets Morrow up, repairs it, and updates it. It is not in the request path: no assistant request passes through it.
+Morrow Bridge is an Electron application in `installer/`. It sets Morrow up, repairs it, and updates it. It is not in the request path: no assistant request passes through it.
 
 It owns:
 
 - assistant detection, and the Morrow entry in the configuration of each assistant it set up: it writes that entry, writes it again for every configured assistant when the materials folder changes, and removes it on request, each time finding its own entry by its marker and changing only that entry, and refusing a `morrow` entry it did not write or a file that changes while Morrow writes it;
 - verification of the sealed MCP payload against its manifest of file digests, which with a gateway health answer is the only way the runtime reports `ready`;
-- the app-owned Morrow Bridge folder that Chrome loads, its staged updates, and its rollback copies;
-- the optional Blackboard tenant configuration and credential files, written with restricted permissions and confirmed by reading their digests back, for a Blackboard route with no live-tenant evidence;
+- the app-owned Bridge folder that Chrome loads, its staged updates, and its rollback copies;
+- no Blackboard setup, because Blackboard is not shipped;
 - application updates from the one configured stable feed, which stay disabled outside a packaged stable build.
 
 It does not restart or rewrite a running installation on its own. Repair and update need the local-owner maintenance lease first, and they stop when work is in flight or when Morrow cannot confirm that the installation is idle. A materials-folder change, an assistant removal, and the in-app data removal stop under that same condition.
@@ -175,27 +165,25 @@ Startup refuses a digest mismatch. The handshake digest chains the Canvas API ca
 
 A disconnect during a safe read can fail or reconnect. It never changes write replay rules.
 
-A Blackboard read replaces steps 3 to 5: the Blackboard child checks the integration account and that account's course membership again, reads through the REST API, and redacts learner identities before the result leaves it. No live tenant has run that path.
 
 ## Write flow
 
 1. The AI client calls one generated write tool with an exact `source_binding_id`.
 2. Morrow freezes the public tool, provider route, arguments, target set, profile, account, principal, connection generation, catalog digest, risk, expiry, and readback comparator.
 3. Morrow records the plan durably and returns an operation ID, plan digest, and local approval URL.
-4. A person opens that URL in Chrome. The page reads the durable plan directly and can approve once or cancel. Morrow Bridge signs the approval after the person's click; the page refuses an approval without that signature. MCP exposes no approval tool.
+4. A person opens that URL in Chrome. The page reads the durable plan directly and can approve once or cancel. The Bridge browser extension signs the approval after the person's click; the page refuses an approval without that signature. MCP exposes no approval tool.
 5. `morrow_operation_dispatch` recomputes current authority and refuses stale approval, binding, profile, catalog, account, principal, or target state.
 6. The effect broker reserves one durable effect receipt before provider dispatch.
 7. The dispatching child consumes that receipt once and sends one provider request.
 8. That child performs the frozen fresh readback.
 9. Morrow records `verified`, `unconfirmed`, `failed`, or `applied_or_unknown` from evidence. It never maps an HTTP success alone to verified success. A fresh readback has three outcomes, kept apart: it shows the approved result (`verified`), it proves the provider holds another result (the change is `failed` with verification `mismatch`, and it releases its target), or it compares nothing (the record stays unresolved with verification `unconfirmed`).
 
-An uncertain send is not replayed. Reconciliation runs the readback only. An unresolved record holds its provider object until it is settled; the refusal names the operation that holds it. When Morrow retained no read comparator it cannot settle the record itself, so a person closes it. `morrow_operation_close_unresolved` only prepares the close-out: for a change Morrow can read back it requires the exact result digest of a fresh Morrow read of the item, and it returns the change's status page. That page offers "I checked it in Canvas: close this change", and the review server accepts that form only with Morrow Bridge's signature over its path and nonce, which the Bridge adds only for a person's own click, the same as an approval. Only that signed post records `closed_by_person`, and it sends nothing. Neither the assistant nor another local HTTP client can close a change. Undo is a new planned and approved corrective operation.
+An uncertain send is not replayed. Reconciliation runs the readback only. An unresolved record holds its provider object until it is settled; the refusal names the operation that holds it. When Morrow retained no read comparator it cannot settle the record itself, so a person closes it. `morrow_operation_close_unresolved` only prepares the close-out: for a change Morrow can read back it requires the exact result digest of a fresh Morrow read of the item, and it returns the change's status page. That page offers "I checked it in Canvas: close this change", and the review server accepts that form only with the Bridge browser extension's signature over its path and nonce, which the Bridge adds only for a person's own click, the same as an approval. Only that signed post records `closed_by_person`, and it sends nothing. Neither the assistant nor another local HTTP client can close a change. Undo is a new planned and approved corrective operation.
 
 ## Transport limits
 
 One Morrow dispatch is not one network request. Morrow reserves one effect and starts one explicit request, and it does not repeat a dispatched operation after an uncertain result. Chrome can still resend a POST when a reused connection fails before the response headers arrive, so the browser transport has no exactly-once guarantee. A local Chrome test observed two POSTs after one explicit request. The rest of the product is built on this limit: an uncertain result keeps its operation and its provider-object conflict lock, and Morrow settles it from a readback or from a person-confirmed close-out, never from a second send. For an unresolved Canvas create, the later check reads the parent collection and reports `duplicate_effect_suspected` when more than one record matches the requested fields inside the request's time window; it deletes nothing. See the [transport evidence and limits](docs/implementation/BROWSER-POST-TRANSPORT-LIMIT.md).
 
-The Blackboard REST route sends one HTTPS request under one signed one-use grant, and Morrow does not send it again. A lost or unclassified response there is not proof that Blackboard saved nothing, so that record settles as `applied_or_unknown` and waits for a fresh read; no live Blackboard tenant has been tested.
 
 ## New Quizzes and Item Banks
 
@@ -215,14 +203,13 @@ Batch state is durable in SQLite. Arguments and manifests use authenticated encr
 
 ## Trust boundaries
 
-- **AI client:** may choose and call tools. MCP exposes no approval tool. A separate local page records approval only with Morrow Bridge's signature over the form, which the Bridge adds for a trusted click in the review tab. Local HTTP requests cannot approve, and they cannot pair a Bridge: Morrow pairs only a Bridge that proves it holds the secret in the Bridge folder Morrow set up, in the Pair Morrow step the person selects. It does not prove human presence against browser automation that drives Chrome input, and it does not stop a program that runs as the educator and reads Morrow's files.
+- **AI client:** may choose and call tools. MCP exposes no approval tool. A separate local page records approval only with the Bridge browser extension's signature over the form, which the Bridge adds for a trusted click in the review tab. Local HTTP requests cannot approve, and they cannot pair a Bridge: Morrow pairs only a Bridge that proves it holds the secret in the Bridge folder Morrow set up, in the Pair Morrow step the person selects. It does not prove human presence against browser automation that drives Chrome input, and it does not stop a program that runs as the educator and reads Morrow's files.
 - **Morrow MCP:** may plan and reserve effects; has no platform credential.
 - **Approval page:** may approve only one exact, unexpired durable plan on loopback.
 - **Extension:** may use only paired commands, admitted operations, current bindings, and unused receipts.
 - **Chrome page:** owns the live Canvas, Moodle, and Item Bank secrets.
-- **Blackboard REST child:** owns the tenant credential and the private dispatch routes; sends one PATCH only under a signed one-use Gateway grant that matches the reviewed plan digest; has no live-tenant evidence.
 - **Desktop app:** may write setup files and deliver the Bridge; holds no approval authority and passes no operation.
-- **Canvas, Moodle, and Blackboard:** each is authoritative for its own final provider state.
+- **Canvas and Moodle:** each is authoritative for its own final provider state. Blackboard is not shipped.
 
 ## Accepted decisions
 
