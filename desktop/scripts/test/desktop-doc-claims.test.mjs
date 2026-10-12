@@ -548,7 +548,7 @@ test("the data-removal action the Windows guide describes is the one the policy 
   // removeBlackboardData deletes <home>/.morrow/blackboard-learn.json, which is outside both folders.
   assert.match(guide, /It then removes only paths inside Morrow's own user-data folder, the Blackboard credential folder, and the Blackboard configuration file\./,
     "the guide must name every place the data removal deletes");
-  assert.match(guide, /Windows 11: Settings, Apps, Installed apps, Morrow, More, Uninstall\. Windows 10: Settings, Apps, Apps & features, Morrow, Uninstall/,
+  assert.match(guide, /Windows 11: Settings, Apps, Installed apps, Morrow Bridge, More, Uninstall\. Windows 10: Settings, Apps, Apps & features, Morrow Bridge, Uninstall/,
     "the guide must state the removal step this platform uses, which the policy names as windows_settings_apps, on both supported Windows versions");
 });
 
