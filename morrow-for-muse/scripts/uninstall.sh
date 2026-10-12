@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/uninstall.sh: remove a Morrow for Muse install completely.
+# scripts/uninstall.sh: remove a Morrow Bridge for Muse install completely.
 #
 # Stops the helper, Chromium, and the proxy forwarder (if running),
 # removes the keepalive cron entries, and deletes the tree, the state
@@ -244,7 +244,7 @@ stop_port_holder() {
 }
 
 if [ "${MODE}" = "disconnect" ]; then
-note "Morrow for Muse disconnect. This will:"
+note "Morrow Bridge for Muse disconnect. This will:"
 note "  1. stop the helper (port ${HELPER_PORT}) and its Chromium, if running"
 note "  2. stop the keepalive background loop and remove the keepalive cron entries (otherwise keepalive relaunches the signed-in helper within 5 minutes)"
 note "  3. delete the Canvas session material:"
@@ -252,7 +252,7 @@ for _p in "${DISCONNECT_PATHS[@]}"; do note "          ${_p}"; done
 note "  It keeps this install, your settings, the audit journal, and the learner vault."
 note ""
 else
-note "Morrow for Muse uninstall. This will:"
+note "Morrow Bridge for Muse uninstall. This will:"
 note "  1. stop the helper (port ${HELPER_PORT}), Chromium (CDP port from helper config), and the proxy forwarder, if running"
 note "  2. stop the keepalive background loop and remove the keepalive cron entries (REQUIRED: a surviving entry resurrects the helper every 5 minutes)"
 note "  3. delete: ${TREE}"

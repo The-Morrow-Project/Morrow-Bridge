@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persistent per-educator settings store for Morrow for Muse (WORKSTREAM B).
+"""Persistent per-educator settings store for Morrow Bridge for Muse (WORKSTREAM B).
 
 Location: <MORROW_HOME>/settings/<user_id>.json. This is user space, so
 settings survive tree restarts, reinstalls, and upgrades; they are never

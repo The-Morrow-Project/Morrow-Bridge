@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 /**
- * Morrow Desktop ships for macOS on Apple silicon and Windows on x64, never Linux. The required
+ * Morrow Bridge for Mac and Windows ships for macOS on Apple silicon and Windows on x64, never Linux. The required
  * pull-request check must therefore run the desktop contracts on those two platforms, not only on
  * the Linux runner, or a platform-only defect merges green and surfaces first in a manual release
  * run.
@@ -225,7 +225,7 @@ test("the required check fails whenever a changed product's job on any platform 
 });
 
 /**
- * The repository text gates read every tracked file, the root documents and Morrow for Muse
+ * The repository text gates read every tracked file, the root documents and Morrow Bridge for Muse
  * included. A change to a root document or to Muse alone skips the desktop suite, so the gates run
  * in their own job on every change, from the repository root, with nothing to install.
  */

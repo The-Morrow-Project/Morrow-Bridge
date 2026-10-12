@@ -1,7 +1,7 @@
 # Blackboard recovery contract
 
 **Status: Blackboard is not shipped.** This note is not a setup guide.
-Nothing below exists in the Morrow for Muse package: no
+Nothing below exists in the Morrow Bridge for Muse package: no
 Blackboard auth, no Blackboard lane, no Blackboard transport, no
 Blackboard catalog rows, no Blackboard proof. Do not offer Blackboard
 operations to the educator.

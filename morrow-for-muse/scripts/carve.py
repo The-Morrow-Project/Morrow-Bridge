@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Carve the Morrow for Muse distribution from this source tree.
+"""Carve the Morrow Bridge for Muse distribution from this source tree.
 
     python3 scripts/carve.py [--out DIR] [--zip]
 

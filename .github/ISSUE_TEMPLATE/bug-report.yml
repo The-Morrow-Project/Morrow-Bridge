@@ -1,5 +1,5 @@
 name: Report a bug
-description: Something in Morrow Bridge, the Bridge browser extension, or Morrow for Muse does not work as its documentation says.
+description: Something in Morrow Bridge, the Bridge browser extension, or Morrow Bridge for Muse does not work as its documentation says.
 body:
   - type: markdown
     attributes:
@@ -20,7 +20,7 @@ body:
       label: Product
       options:
         - Morrow Bridge for Mac and Windows
-        - Morrow for Muse
+        - Morrow Bridge for Muse
     validations:
       required: true
   - type: input

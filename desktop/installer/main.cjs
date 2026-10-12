@@ -633,7 +633,7 @@ async function createWindow() {
     minWidth: 320,
     minHeight: 640,
     show: false,
-    title: "Morrow Desktop",
+    title: "Morrow Bridge",
     backgroundColor: "#F5F4EE",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

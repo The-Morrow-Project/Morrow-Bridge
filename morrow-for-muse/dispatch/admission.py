@@ -1,4 +1,4 @@
-"""Enforced operation admission gate for Morrow for Muse.
+"""Enforced operation admission gate for Morrow Bridge for Muse.
 
 The admission gate runs BEFORE any operation is dispatched, on every lane:
 plain HTTPS dispatch, browser-lane dispatch and complete, catalog dispatch,
@@ -24,7 +24,7 @@ generated from proof-battery/OPERATION_CATALOG.md plus the standing
 proof-directive exclusions). The gate matches entry names against the tool-name lists and scans
 every request URL the entry would hit against the URL-substring lists,
 and every request's query and body for the never-dispatch request flags
-(is_announcement: Morrow for Muse never posts an announcement).
+(is_announcement: Morrow Bridge for Muse never posts an announcement).
 
 Approval records (v2): JSON, either supplied as a dict or read from
 ~/.morrow/approvals/<op_id>.json. Fields:
@@ -159,7 +159,7 @@ class UnsupportedOperation(AdmissionRefused):
 
 
 class EvidenceHold(AdmissionRefused):
-    """The operation is not yet live-proven through Morrow for Muse; refused
+    """The operation is not yet live-proven through Morrow Bridge for Muse; refused
     on every tenant until a disposable live battery proves the complete
     path. When proven, it is admitted on ALL tenants. There are no tenant
     allowlists: no tenant is ever gated, restricted, or treated differently
@@ -721,7 +721,7 @@ def _request_field_hit(entry: dict, rules) -> dict | None:
 
 
 def check_evidence_holds(entry: dict, policy: dict) -> None:
-    """Refuse operations that are not yet live-proven through Morrow for Muse.
+    """Refuse operations that are not yet live-proven through Morrow Bridge for Muse.
 
     Tenant-independent: the refusal applies identically on every tenant.
     When a disposable live battery proves the complete path for a held
@@ -735,7 +735,7 @@ def check_evidence_holds(entry: dict, policy: dict) -> None:
     holds = policy.get("evidence_holds", {}) or {}
     reasons = holds.get("reasons", {}) or {}
     if name in holds.get("tool_names", []):
-        reason = reasons.get(name, "not yet live-proven through Morrow for Muse")
+        reason = reasons.get(name, "not yet live-proven through Morrow Bridge for Muse")
         raise EvidenceHold(
             "operation %r is on evidence hold: %s; refused on every tenant "
             "until a live battery proves the complete path" % (name, reason))

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Remove unshipped QR OAuth proof and PAT lane probe.
+- Use the name Morrow Bridge for Muse in CLI help, installer output, educator pages, agent messages and docstrings.
 
 ## 0.4.13 (2026-10-11)
 

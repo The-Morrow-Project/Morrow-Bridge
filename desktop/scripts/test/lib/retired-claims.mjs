@@ -2,7 +2,7 @@
  * The phrases Morrow retired from every product-facing surface, read by the document gate
  * (`scripts/test/product-claims.test.mjs`). That gate checks the desktop claim documents and every
  * product-facing Markdown or HTML page in the repository, including the root README, docs/ and
- * Morrow for Muse. The website lives in its own repository and is not checked here. This file is not
+ * Morrow Bridge for Muse. The website lives in its own repository and is not checked here. This file is not
  * a test: `pnpm scripts:test` globs `scripts/test/*.test.mjs`, so it stays out of that glob by living
  * in `lib/` and by keeping `.test.` out of its name.
  *
@@ -17,8 +17,14 @@
  * - "Blackboard browser connection" and "Blackboard browser access" describe a route that does not
  *   exist: Blackboard runs through the Anthology Learn REST API with a local credential, and the
  *   Chrome connector never connects a Blackboard course page.
- * - "Morrow for Mac and Windows" was a second name for Morrow Desktop. The product has one public
- *   name, Morrow Desktop, and a page may add that it is for Mac and Windows.
+ * - "Morrow for Mac and Windows" was a second name for the desktop product. "Morrow Desktop" was its
+ *   earlier name. The product has one public name, Morrow Bridge for Mac and Windows, and in-app text
+ *   says Morrow Bridge.
+ * - "Morrow for Muse" was the earlier name of the Muse connector, now Morrow Bridge for Muse.
+ *
+ * Changelogs and dated records keep the name a release was published with, so the repository scan in
+ * `product-claims.test.mjs` skips them. The build identity `productName: "Morrow Desktop"` is not
+ * Markdown or HTML, so this scan does not read it. It stays until the productName decision is made.
  */
 export const RETIRED_PHRASES = [
   "Development preview",
@@ -28,6 +34,8 @@ export const RETIRED_PHRASES = [
   "Blackboard browser connection",
   "Blackboard browser access",
   "Morrow for Mac and Windows",
+  "Morrow Desktop",
+  "Morrow for Muse",
 ];
 
 /** A prohibition needs both parts: something forbidden, and the act of writing or saying it. */

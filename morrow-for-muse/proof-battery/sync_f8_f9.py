@@ -154,7 +154,7 @@ old_moodle = ("Reference: the desktop Moodle browser catalog (250 operations). L
     "variants and session lifetimes are unproven (proof section 6).")
 new_context = (" Context 2026-09-21: the Moodle read battery (moodle-read-battery/MATRIX.md) enumerated "
     "352 registered external functions on sandbox.moodledemo.net (Moodle 5.2.3): 110 PROVEN / 65 FAILED / 177 BLOCKED "
-    "over AJAX. Morrow for Muse includes the separate Moodle session lane. Each M-row keeps its operation-specific evidence "
+    "over AJAX. Morrow Bridge for Muse includes the separate Moodle session lane. Each M-row keeps its operation-specific evidence "
     "status; this battery is context only, "
     "not per-op proof.")
 new_moodle = old_moodle + new_context

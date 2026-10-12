@@ -1,4 +1,4 @@
-# Morrow for Muse: Operation Catalog (authoritative)
+# Morrow Bridge for Muse: Operation Catalog (authoritative)
 
 Date: 2026-09-20. This is historical operation evidence. Current Moodle execution
 uses `bin/morrow moodle` and installed Chromium. The Python HTTPS authentication
@@ -11,7 +11,7 @@ This file is the authoritative operation catalog for the proof battery. It super
 Path convention: the desktop catalog records paths without the /api prefix; every Canvas REST path below is shown with the real /api prefix added.
 
 ## Proof standard
-Each operation needs: (1) a batch rendered by transport/batch.py or the equivalent product transport, (2) live dispatch through the educator's browser-owned authenticated session, (3) readback verification, (4) full cleanup of disposable test objects, (5) a sanitized evidence fixture. Statuses: live-proven, pending, evidence-hold, unsupported, excluded, source-only, failed. failed means a disposable live battery attempted the operation and it did not succeed; the failure evidence is recorded in the notes and the op is not retried without a code or request-shape change. Amendment 2026-09-21: tenant-restricted is RETIRED per parity law. Nothing is gated by tenant: no tenant is ever allowlisted, restricted, or treated differently from any other. evidence-hold means the operation is not yet live-proven through Morrow for Muse and is refused on EVERY tenant until a disposable live battery proves the complete path; when proven it is admitted on ALL tenants. Learner-data is an orthogonal flag: flagged ops are NOT live-tested until the learner tokenization boundary lands.
+Each operation needs: (1) a batch rendered by transport/batch.py or the equivalent product transport, (2) live dispatch through the educator's browser-owned authenticated session, (3) readback verification, (4) full cleanup of disposable test objects, (5) a sanitized evidence fixture. Statuses: live-proven, pending, evidence-hold, unsupported, excluded, source-only, failed. failed means a disposable live battery attempted the operation and it did not succeed; the failure evidence is recorded in the notes and the op is not retried without a code or request-shape change. Amendment 2026-09-21: tenant-restricted is RETIRED per parity law. Nothing is gated by tenant: no tenant is ever allowlisted, restricted, or treated differently from any other. evidence-hold means the operation is not yet live-proven through Morrow Bridge for Muse and is refused on EVERY tenant until a disposable live battery proves the complete path; when proven it is admitted on ALL tenants. Learner-data is an orthogonal flag: flagged ops are NOT live-tested until the learner tokenization boundary lands.
 
 ## Evidence citations: what is in this tree and what is not
 Citations in row notes name where the evidence was recorded, not
@@ -938,7 +938,7 @@ Note: battery2.py also covered the accessibility-relevant check (title non-empty
 
 ## Moodle course-level operations
 
-Reference: the desktop Moodle browser catalog (250 operations). Live proof: proofs/moodle-lane-proof.md (2026-09-20, sandbox.moodledemo.net, Moodle 5.2, teacher demo account). The sandbox resets hourly; production SSO variants and session lifetimes are unproven (proof section 6). Context 2026-09-21: the Moodle read battery (moodle-read-battery/MATRIX.md) enumerated 352 registered external functions on sandbox.moodledemo.net (Moodle 5.2.3): 110 PROVEN / 65 FAILED / 177 BLOCKED over AJAX. Morrow for Muse includes the separate Moodle session lane. Each M-row keeps its operation-specific evidence status; this battery is context only, not per-op proof.
+Reference: the desktop Moodle browser catalog (250 operations). Live proof: proofs/moodle-lane-proof.md (2026-09-20, sandbox.moodledemo.net, Moodle 5.2, teacher demo account). The sandbox resets hourly; production SSO variants and session lifetimes are unproven (proof section 6). Context 2026-09-21: the Moodle read battery (moodle-read-battery/MATRIX.md) enumerated 352 registered external functions on sandbox.moodledemo.net (Moodle 5.2.3): 110 PROVEN / 65 FAILED / 177 BLOCKED over AJAX. Morrow Bridge for Muse includes the separate Moodle session lane. Each M-row keeps its operation-specific evidence status; this battery is context only, not per-op proof.
 
 ### moodle.core_backup (2)
 
@@ -1352,7 +1352,7 @@ Reference: the desktop Moodle browser catalog (250 operations). Live proof: proo
 
 ## Privacy gate: learner-data operations
 
-Rule: no learner-data operation is live-tested until the learner tokenization boundary lands in Morrow for Muse. The desktop privacy engine (LearnerVault, scoped learner tokens, output projection) exists in morrow-fix/packages/gateway-core/src/privacy.ts; the Muse deploy only has generic key-pattern redaction in dispatch/executor.py. Until the boundary is integrated and proven, every flagged op below stays gated.
+Rule: no learner-data operation is live-tested until the learner tokenization boundary lands in Morrow Bridge for Muse. The desktop privacy engine (LearnerVault, scoped learner tokens, output projection) exists in morrow-fix/packages/gateway-core/src/privacy.ts; the Muse deploy only has generic key-pattern redaction in dispatch/executor.py. Until the boundary is integrated and proven, every flagged op below stays gated.
 
 ### Canvas learner-data families and their PII-bearing fields
 

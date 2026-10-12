@@ -1,4 +1,4 @@
-# Morrow for Muse: modes and settings
+# Morrow Bridge for Muse: modes and settings
 
 You shape exactly how your agent operates. Everything below can be
 changed by talking to the agent in plain language. Nothing here is
