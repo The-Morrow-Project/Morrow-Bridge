@@ -90,6 +90,6 @@ and a first course read before it says the account is ready.
 
 ## Get help
 
-Email info@morrowproject.org or see meetmorrow.app/support. Include the Morrow
+Email hello@meetmorrow.app or see meetmorrow.app/support. Include the Morrow
 for Muse version and the step where setup stopped. Do not send student
 information, passwords, sign-in details, or screenshots that show students.

@@ -86,9 +86,8 @@ The action asks for a confirmation that lists every path it will remove and
 every path it will not. It first takes Morrow's own `morrow` entry out of each
 assistant configuration file Morrow wrote and leaves the rest of that file; if it
 cannot, it stops, names the file, and removes nothing. It then removes only paths
-inside Morrow's own user-data folder. Blackboard is not shipped. If a leftover
-Blackboard credential folder or Blackboard configuration file is listed, the
-removal deletes that path too.
+inside Morrow's own user-data folder, the Blackboard credential folder, and the
+Blackboard configuration file. Blackboard is not shipped.
 It keeps the `Assistant settings backups` folder and the `Window data`
 folder; delete `Window data` after you remove the application. It never removes an
 assistant's own configuration file. After the removal it reads each path again

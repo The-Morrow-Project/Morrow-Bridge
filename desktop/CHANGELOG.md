@@ -25,7 +25,7 @@ Release notes for Morrow Bridge for Mac and Windows. Blackboard is not shipped. 
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Technical notes
 
@@ -45,7 +45,7 @@ Release notes for Morrow Bridge for Mac and Windows. Blackboard is not shipped. 
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Technical notes
 
@@ -63,7 +63,7 @@ Release notes for Morrow Bridge for Mac and Windows. Blackboard is not shipped. 
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Technical notes
 
@@ -80,7 +80,7 @@ This release includes Morrow Bridge Extension 1.0.136 and unsigned installers fo
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Technical notes
 
@@ -101,7 +101,7 @@ This release includes Morrow Bridge Extension 1.0.135 and unsigned installers fo
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Technical notes
 
@@ -121,7 +121,7 @@ This release includes Morrow Bridge Extension 1.0.134 and unsigned installers fo
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Technical notes
 
@@ -139,7 +139,7 @@ This release includes Morrow Bridge Extension 1.0.134 and unsigned installers fo
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Technical notes
 
@@ -161,7 +161,7 @@ This release includes Morrow Bridge Extension 1.0.130 and unsigned installers fo
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ## 1.0.7 (2026-09-25)
 
@@ -173,7 +173,7 @@ This Mac release includes the unsigned `Morrow-1.0.7-mac-arm64.dmg` and `Morrow-
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Wait for Morrow to finish reading the course, then select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 - A change review in Chrome now shows that it is loading while Morrow reads the course. Approval controls appear only after that read finishes and the request is still the same. If the request changes during the read, the page asks you to reload it.
 
 ### Setup
@@ -191,7 +191,7 @@ This Mac release includes the unsigned `Morrow-1.0.6-mac-arm64.dmg` and `Morrow-
 
 ### Approvals and Edit access
 
-- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Open it with the Bridge browser extension connected and select Turn on Edit. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, Morrow opens a review in Chrome. Open it with the Bridge browser extension connected and select Turn on Edit. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 
 ### Course reviews
 
@@ -214,7 +214,7 @@ This release fixes the problems a full review of Morrow found before release. Te
 - A change is approved only from the Bridge browser extension in your own Chrome tab. Another program on your computer can no longer approve a change.
 - the Bridge browser extension pairs with Morrow only when you select Connect Morrow, and only with a proof from the Bridge folder Morrow set up. Another program on your computer can no longer connect itself to Morrow in place of the Bridge browser extension and then approve changes. The Chrome page that asked you to allow the connection is gone.
 - Edit access has no time limit. Old timed grants fall back to Plan and are never extended.
-- When your assistant asks to turn on Edit, it gives you a link to a Morrow page that names each course and kind of change. Edit turns on only when you open that page in Chrome, with the Bridge browser extension connected, and select Turn on Edit. Before, Edit turned on when you accepted a prompt in your assistant. Actions that remove content are turned on only in the Bridge browser extension Plan and Edit settings.
+- When your assistant asks to turn on Edit, it gives you a link to a Morrow page that names each course and kind of change. Edit turns on only when you open that page in Chrome, with the Bridge browser extension connected, and select Turn on Edit. Before, Edit turned on when you accepted a prompt in your assistant. Actions that remove content are turned on only in Morrow Bridge Plan and Edit settings.
 - Turn on Edit on an Edit access review adds the kinds of change your assistant asked for to what the course already has. It used to end every other Edit choice for that course, including removals you turned on in Plan and Edit settings. After you turn Edit on, the page lists every change Morrow now makes without asking.
 - Your assistant can no longer ask for Edit on an action that can change many settings at once, such as Edit an assignment. Edit never covered those actions, and Morrow still asks before each one, but the review page used to list them as changes Morrow makes without asking.
 - A review that is waiting ends when its Morrow connection ends.

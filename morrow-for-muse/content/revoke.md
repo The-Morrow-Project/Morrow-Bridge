@@ -49,6 +49,6 @@ up where they left off.
 ## Getting help
 
 If a disconnect or uninstall does not finish, email
-info@morrowproject.org or see meetmorrow.app/support, and include the
+hello@meetmorrow.app or see meetmorrow.app/support, and include the
 step where Muse stopped. Do not send student information: no student
 names, records, or screenshots that show students, and no passwords.
