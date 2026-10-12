@@ -447,7 +447,7 @@ test("the documented notes command saves each product's whole changelog section"
   };
   const commands = [...versioning.matchAll(/`(awk -v v="X\.Y\.Z" '[^']+' (desktop|morrow-for-muse)\/CHANGELOG\.md) > <notes file>`/g)];
   assert.deepEqual(commands.map(([, , product]) => product), ["desktop", "morrow-for-muse"],
-    `${versioningPath} must give the notes command for Morrow Desktop (step 4) and Morrow for Muse (step 5)`);
+    `${versioningPath} must give the notes command for Morrow Bridge for Mac and Windows (step 4) and Morrow Bridge for Muse (step 5)`);
   for (const [, command, product] of commands) {
     const version = versions[product];
     const lines = readFileSync(join(repositoryRoot, product, "CHANGELOG.md"), "utf8").split("\n");

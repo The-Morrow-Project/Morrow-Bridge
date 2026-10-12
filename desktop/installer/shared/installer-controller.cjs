@@ -2947,7 +2947,7 @@ class InstallerController {
     if (guard.kind === "owner") {
       await this.releaseRestartLease(guard.leaseId);
     } else if (guard.module.removeExactLocalOwnerMaintenanceLease(guard.journalPath, guard.leaseId, guard.leaseToken) !== true) {
-      throw new Error("Morrow desktop maintenance release is unconfirmed");
+      throw new Error("Morrow Bridge maintenance release is unconfirmed");
     }
     if (this.desktopMutationGuard === guard) this.desktopMutationGuard = null;
   }

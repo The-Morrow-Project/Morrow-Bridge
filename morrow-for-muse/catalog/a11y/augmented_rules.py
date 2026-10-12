@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Morrow-extended augmented accessibility rules for Morrow for Muse.
+"""Morrow-extended augmented accessibility rules for Morrow Bridge for Muse.
 
 Layering
 --------

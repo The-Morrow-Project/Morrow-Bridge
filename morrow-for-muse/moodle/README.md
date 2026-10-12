@@ -1,4 +1,4 @@
-# Moodle browser operations for Morrow for Muse
+# Moodle browser operations for Morrow Bridge for Muse
 
 The public entry point is `bin/morrow moodle`. Read [SKILL.md](SKILL.md) for
 account pairing, course discovery, Plan/Edit modes, and recovery.

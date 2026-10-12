@@ -1,6 +1,6 @@
 # modes/ : Plan/Edit mode state machine (Workstream A)
 
-Per-user Plan/Edit mode for Morrow for Muse. Answers one question: may
+Per-user Plan/Edit mode for Morrow Bridge for Muse. Answers one question: may
 this write proceed without a per-write educator approval? Everything
 else about the two modes is identical: reads are unrestricted with no
 approval in both modes, and every other admission gate

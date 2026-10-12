@@ -1,4 +1,4 @@
-# Setting up Morrow for Muse with Canvas
+# Setting up Morrow Bridge for Muse with Canvas
 
 *Version 0.4.13. Canvas setup takes about 15 minutes. You set it up by talking
 to Muse; there is no software to install on your own computer.*
@@ -19,7 +19,7 @@ to Muse; there is no software to install on your own computer.*
 
 In Muse, type (or say, if your device types what you say):
 
-> Set up Morrow for Muse with Canvas by following https://meetmorrow.app/morrow-for-muse
+> Set up Morrow Bridge for Muse with Canvas by following https://meetmorrow.app/morrow-for-muse
 
 If Morrow is already set up, say “Connect my Canvas account.”
 

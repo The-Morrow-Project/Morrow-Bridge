@@ -5,7 +5,7 @@
     ],
     "slot": "canvas_session"
   },
-  "description": "Reads one exact course item's saved HTML field and runs the 18 saved-source accessibility signal detectors over it (image alt, headings, tables, links, media, iframes, aria-hidden on focusables, fixed pixel widths, font tags). Returns the signal lists, per-signal entry limits, media metadata, and a remediation route candidate. Read-only: this entry never writes. Every signal list is a signal that needs human review, never a violation; no signal set establishes WCAG conformance. Evidence status: live-unverified (the detector is unit-proven; no live tenant battery has run through Morrow for Muse).",
+  "description": "Reads one exact course item's saved HTML field and runs the 18 saved-source accessibility signal detectors over it (image alt, headings, tables, links, media, iframes, aria-hidden on focusables, fixed pixel widths, font tags). Returns the signal lists, per-signal entry limits, media metadata, and a remediation route candidate. Read-only: this entry never writes. Every signal list is a signal that needs human review, never a violation; no signal set establishes WCAG conformance. Evidence status: live-unverified (the detector is unit-proven; no live tenant battery has run through Morrow Bridge for Muse).",
   "effects": "read",
   "evidence_status": "live-unverified",
   "executor_wiring": "wired: catalog/a11y/runner.py audit mode (run_audit). Read-only; dispatch/executor.py carries no a11y branches per the F-17 carve.",
@@ -17,7 +17,7 @@
   "known_gaps": [
     {
       "code": "render_evidence_unavailable",
-      "detail": "Desktop returns a morrow.canvas-render-check.v1 record computed in the Morrow Bridge sandbox (CSP default-src 'none'). Morrow for Muse has no Bridge/Electron loopback, so render_evidence.status is unavailable. Focus order, accessible names, contrast ratios, and learner-view checks stay manual until a VM-native sandbox is built."
+      "detail": "Morrow Bridge for Mac and Windows returns a morrow.canvas-render-check.v1 record computed in the Morrow Bridge sandbox (CSP default-src 'none'). Morrow Bridge for Muse has no Bridge/Electron loopback, so render_evidence.status is unavailable. Focus order, accessible names, contrast ratios, and learner-view checks stay manual until a VM-native sandbox is built."
     },
     {
       "code": "rubric_remediation_blocked",
@@ -37,7 +37,7 @@
     },
     {
       "code": "blackboard_live_unproven",
-      "detail": "Blackboard is not implemented in Morrow for Muse: there is no Blackboard auth lane, no Blackboard transport, and the provider enum is canvas/moodle only. No Blackboard audit operation exists and no live Blackboard tenant behavior is proven, so Blackboard results are not available in any status."
+      "detail": "Blackboard is not implemented in Morrow Bridge for Muse: there is no Blackboard auth lane, no Blackboard transport, and the provider enum is canvas/moodle only. No Blackboard audit operation exists and no live Blackboard tenant behavior is proven, so Blackboard results are not available in any status."
     }
   ],
   "manifest": "morrow.manifest.v0",

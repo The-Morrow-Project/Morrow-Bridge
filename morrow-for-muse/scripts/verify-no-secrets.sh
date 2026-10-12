@@ -1,7 +1,7 @@
 #!/bin/bash
 # verify-no-secrets.sh [tree]
 #
-# Packaging secrets gate for the Morrow for Muse connector. Enforces
+# Packaging secrets gate for the Morrow Bridge for Muse connector. Enforces
 # pack/deny-list.txt against a tree (default: the tree this script ships
 # in). install.sh runs it in step 8 with VERIFY_EXCLUDE="helper/profile"
 # (the runtime profile the installer itself creates) and

@@ -118,7 +118,7 @@ def tree_env(tmp_path, monkeypatch):
     monkeypatch.setenv("MORROW_HOME", str(tmp_path / "home"))
 
     def write(**values):
-        lines = ["# Morrow for Muse: educator config for THIS tree."]
+        lines = ["# Morrow Bridge for Muse: educator config for THIS tree."]
         lines += ["%s=%s" % kv for kv in values.items()]
         env_file.write_text("\n".join(lines) + "\n")
         env_file.chmod(0o600)

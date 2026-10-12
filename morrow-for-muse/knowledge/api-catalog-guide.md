@@ -1,6 +1,6 @@
 # API catalog guide: the two catalogs and what each covers
 
-Morrow for Muse works with two catalogs. This file maps them, because
+Morrow Bridge for Muse works with two catalogs. This file maps them, because
 mixing them up is the fastest way to claim something that is not true.
 
 ## Catalog A: the desktop research catalog (NOT dispatchable)

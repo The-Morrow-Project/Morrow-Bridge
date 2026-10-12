@@ -1,4 +1,4 @@
-# Optional dependencies for Morrow for Muse (exact pins, tested 2026-09-24).
+# Optional dependencies for Morrow Bridge for Muse (exact pins, tested 2026-09-24).
 #
 # Canvas course-content work by student name and the Moodle browser
 # privacy boundary need cryptography. Install this file before using

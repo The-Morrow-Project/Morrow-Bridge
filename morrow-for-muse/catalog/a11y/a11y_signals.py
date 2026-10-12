@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Saved-source accessibility signal detector for Morrow for Muse.
+"""Saved-source accessibility signal detector for Morrow Bridge for Muse.
 
-Port of the desktop Morrow ``htmlSignals`` routine
+Port of the Morrow Bridge for Mac and Windows ``htmlSignals`` routine
 (``packages/mcp-server/src/course-audit.ts``) and the missing-alt evidence
 helper (``packages/mcp-server/src/page-correction.ts``), re-expressed in
 stdlib-only Python so the dispatch executor can run it on the VM with no
@@ -86,8 +86,8 @@ INTERPRETATION = (
 RENDER_EVIDENCE_UNAVAILABLE = {
     "status": "unavailable",
     "reason": (
-        "Morrow Desktop computes render_evidence in the Morrow Bridge sandbox "
-        "(an isolated page with CSP default-src 'none'). Morrow for Muse has no "
+        "Morrow Bridge for Mac and Windows computes render_evidence in the Morrow Bridge sandbox "
+        "(an isolated page with CSP default-src 'none'). Morrow Bridge for Muse has no "
         "Bridge/Electron loopback on the VM, so saved-source render evidence is "
         "unavailable. Saved-source signals only; focus order, accessible names, "
         "contrast, and learner-view checks stay manual."

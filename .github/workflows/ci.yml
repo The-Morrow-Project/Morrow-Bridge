@@ -5,7 +5,7 @@ name: ci
 # changed. The
 # `check-repository` job runs the repository text gates on every change,
 # because they read every tracked file, including the root documents and
-# Morrow for Muse. The `check` job aggregates every job and keeps the
+# Morrow Bridge for Muse. The `check` job aggregates every job and keeps the
 # required status-check name stable, so branch protection keeps working when
 # a change touches one product only (the other suite skips, and `check` still
 # reports). A workflow change runs every suite.
@@ -99,7 +99,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
-  # Morrow Desktop ships for Windows and for macOS on Apple silicon, never
+  # Morrow Bridge for Mac and Windows ships on Windows and on macOS on Apple silicon, never
   # Linux. These jobs run the installer contracts, and every desktop test that
   # Linux skips, on the runners desktop-release.yml packages on, so a defect
   # that shows only on a shipped platform fails the required check.

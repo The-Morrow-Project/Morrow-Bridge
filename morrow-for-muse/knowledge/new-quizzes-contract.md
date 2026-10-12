@@ -1,4 +1,4 @@
-# New Quizzes and Item Banks contract for Morrow for Muse
+# New Quizzes and Item Banks contract for Morrow Bridge for Muse
 
 Historical source (not shipped in this package): `origin-morrow/docs/research/CANVAS-NEW-QUIZZES-ITEM-BANKS-CONTRACT-2026-09-06.md`
 (Meridian production harvest) and `CANVAS-NEW-QUIZZES-COMPLETION-MATRIX-2026-09-08.md`

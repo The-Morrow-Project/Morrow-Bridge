@@ -11,7 +11,7 @@ import test from "node:test";
  * No file tracked anywhere in the repository carries an em dash, as the character or as an HTML
  * entity. The scan lists files from the repository root, so the root README, docs/, desktop/ and
  * morrow-for-muse/ are all in it. CI runs this file on every change (ci.yml `check-repository`),
- * because a change to a root document or to Morrow for Muse alone does not run the desktop suite.
+ * because a change to a root document or to Morrow Bridge for Muse alone does not run the desktop suite.
  *
  * The one exception is a line in a test file that asserts the dash is absent: it has to name it.
  */
@@ -43,7 +43,7 @@ function emDashLines(root, files = trackedFiles(root)) {
   return found;
 }
 
-test("the scan finds an em dash in root documents and Morrow for Muse, and passes a test's absence assertion", (t) => {
+test("the scan finds an em dash in root documents and Morrow Bridge for Muse, and passes a test's absence assertion", (t) => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "morrow-em-dash-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   // Built from parts, so this file does not carry the entities it tests for.

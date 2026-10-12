@@ -143,7 +143,7 @@ about where course content may go, check them before you connect.
 Signing out of Canvas on your laptop or phone does not end the
 helper's own sign-in, because each device has its own Canvas sign-in.
 There is no access token to delete: this version creates none, so
-there is no "Morrow for Muse" entry under Approved Integrations in
+there is no "Morrow Bridge for Muse" entry under Approved Integrations in
 your Canvas account.
 
 Once disconnected, Morrow cannot reach Canvas at all. Reconnecting

@@ -1,4 +1,4 @@
-# FERPA-shaped usage policy: student data in Morrow for Muse
+# FERPA-shaped usage policy: student data in Morrow Bridge for Muse
 
 This document is the plain-language policy for the student
 de-identification layer (`privacy/`). It is written for the educator
@@ -242,7 +242,7 @@ De-identification is ON for every learner-data read, and nothing turns
 it off: no record, no executor flag, no file, no environment variable,
 no setting. The model sees course-scoped labels, and a name only when
 the educator typed it (the name echo). Real names appear only on
-Morrow's own local surfaces for the educator; Morrow for Muse has no
+Morrow's own local surfaces for the educator; Morrow Bridge for Muse has no
 local surface that lists a roster, so the educator works by name: they
 name a student, and `bin/morrow students find` returns that student's
 label. The sealed educator reveal record that earlier releases offered

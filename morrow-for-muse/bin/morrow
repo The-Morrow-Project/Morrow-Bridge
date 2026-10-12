@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Morrow for Muse: one front door for the operator CLIs.
+"""Morrow Bridge for Muse: one front door for the operator CLIs.
 
 QOL-2 (2026-09-22): the tree has several entry points (dispatch/executor.py,
 catalog/a11y/runner.py, query/chain.py) and operators should not have to
@@ -133,7 +133,7 @@ def _page_link():
 def _print_help():
     lines = ["usage: bin/morrow <command> [args...]",
              "",
-             "Morrow for Muse operator front door.",
+             "Morrow Bridge for Muse operator front door.",
              "",
              "commands:"]
     for name in sorted(_COMMANDS):

@@ -1,4 +1,4 @@
-# Dev-only dependencies for Morrow for Muse (exact pins, hash-locked 2026-09-21).
+# Dev-only dependencies for Morrow Bridge for Muse (exact pins, hash-locked 2026-09-21).
 #
 # This lock file is development-only and is never shipped. Requests is a
 # runtime dependency for the Moodle lane and is also pinned in

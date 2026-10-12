@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Canvas accessibility-checker parity port for Morrow for Muse.
+"""Canvas accessibility-checker parity port for Morrow Bridge for Muse.
 
 Port of Instructure's tinymce-a11y-checker (MIT),
 https://github.com/instructure/canvas-lms,

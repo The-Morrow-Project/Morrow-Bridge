@@ -5,4 +5,4 @@ contact_links:
     about: Use GitHub private vulnerability reporting. Open the Security tab, then select Report a vulnerability. You can also email info@morrowproject.org. Do not include student information.
   - name: Get help with setup, a connection, or a course change
     url: https://meetmorrow.app/support
-    about: Step-by-step help for Morrow Bridge and Morrow for Muse. Do not post student information in an issue.
+    about: Step-by-step help for Morrow Bridge and Morrow Bridge for Muse. Do not post student information in an issue.

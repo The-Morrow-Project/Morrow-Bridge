@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guarded image-alt repair plan validation for Morrow for Muse.
+"""Guarded image-alt repair plan validation for Morrow Bridge for Muse.
 
 Port of the desktop planner contracts:
 - ``morrow_plan_page_image_alt_repair`` (Canvas Page, non-block-editor)
