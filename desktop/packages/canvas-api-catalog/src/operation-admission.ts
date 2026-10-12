@@ -45,7 +45,7 @@ export type CanvasWriteAdmission =
   }
   | {
     readonly state: "held";
-    readonly reason: "multi_step_upload_requires_reviewed_transfer";
+    readonly reason: "multi_step_upload_requires_reviewed_transfer" | "mints_a_credential";
   };
 
 export interface CanvasOperationAdmission {
@@ -227,6 +227,15 @@ function reviewedFileTransferRoute(operation: Pick<CanvasApiOperation, "method" 
   );
 }
 
+/**
+ * Writes that mint or regenerate a Canvas access token. Morrow never creates a credential: a
+ * token is not a teaching change, and one Morrow minted would be a credential nobody gave it.
+ */
+function credentialMintingRoute(operation: Pick<CanvasApiOperation, "method" | "path">): boolean {
+  return (operation.method === "POST" && operation.path === "/v1/users/{user_id}/tokens")
+    || (operation.method === "PUT" && operation.path === "/v1/users/{user_id}/tokens/{id}");
+}
+
 export type CanvasReviewedUploadKind = "file" | "rubric_csv";
 
 /**
@@ -386,6 +395,7 @@ export function canvasOperationAdmission(operation: CanvasApiOperation): CanvasO
   if (reviewedFileTransferRoute(operation)) {
     return { ...scope, write: { state: "held", reason: "multi_step_upload_requires_reviewed_transfer" } };
   }
+  if (credentialMintingRoute(operation)) return { ...scope, write: { state: "held", reason: "mints_a_credential" } };
   return { ...scope, write: { state: "admitted" } };
 }
 
@@ -470,11 +480,13 @@ export function canvasReadbackAssessment(
 /**
  * The plain sentence for a held write, shown to the person who asked for the change: what the change
  * would do, why Morrow holds it, and what they can do instead. The catalog carries no Canvas LTI
- * service write (scripts/generate-canvas-api-catalog.mjs), so the reviewed file transfer is the one
- * held class.
+ * service write (scripts/generate-canvas-api-catalog.mjs).
  */
 export function canvasAdmissionReason(admission: CanvasWriteAdmission): string | undefined {
   if (admission.state !== "held") return undefined;
+  if (admission.reason === "mints_a_credential") {
+    return "This change would create or renew a Canvas access token, which is a sign-in credential, and Morrow never creates credentials. Manage your access tokens yourself in your Canvas account settings.";
+  }
   return "Canvas takes a file's bytes in a later request that this route cannot carry, so Morrow sends every file through its reviewed file transfer, which checks the saved file and its bytes. Ask Morrow to prepare the file upload for this same target.";
 }
 

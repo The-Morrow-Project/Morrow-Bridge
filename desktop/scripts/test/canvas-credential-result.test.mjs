@@ -42,15 +42,15 @@ function redactor() {
   }
 }
 
-test("minting an access token is a session-credential request with no readback, approved change by change", () => {
-  const create = operation("canvas_create_access_token");
-  assert.equal(canvasOperationAdmission(create).siteClass, "session_credential");
-  assert.deepEqual(canvasReadbackAssessment(canvasOperations, create), { state: "unavailable", reason: "no_safe_readback_route" });
-  const option = categoriesForBinding({ provider: "canvas" }, canvasOperations)
-    .find((entry) => entry.id === "action:canvas:canvas_create_access_token");
-  assert.equal(option.availability, "review");
-  assert.match(option.reviewReason, /Canvas has no read that shows the saved result of this change/);
-  assert.match(option.description, /keeps any credential Canvas returns out of the result/);
+test("creating or renewing an access token is held before dispatch and never offered", () => {
+  const options = categoriesForBinding({ provider: "canvas" }, canvasOperations);
+  for (const toolName of ["canvas_create_access_token", "canvas_update_access_token"]) {
+    const admission = canvasOperationAdmission(operation(toolName));
+    assert.deepEqual(admission.write, { state: "held", reason: "mints_a_credential" }, toolName);
+    assert.deepEqual(canvasReadbackAssessment(canvasOperations, operation(toolName)), { state: "not_applicable", reason: "write_held" }, toolName);
+    assert.equal(options.find((entry) => entry.id === `action:canvas:${toolName}`), undefined, toolName);
+  }
+  assert.equal(canvasOperationAdmission(operation("canvas_create_access_token")).siteClass, "session_credential");
 });
 
 test("a minted bearer secret never reaches a result handed back", () => {

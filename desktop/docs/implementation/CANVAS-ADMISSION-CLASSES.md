@@ -67,6 +67,7 @@ and last everything else.
 | Reason | Route shape | What the person is told |
 | --- | --- | --- |
 | `multi_step_upload_requires_reviewed_transfer` | Every upload first step, for a course, a folder, a group, an assignment, section or quiz submission, a submission comment, or a person, and both Rubric CSV imports. The raw route cannot carry the file's bytes; each of these targets is available through Morrow's reviewed file transfer | "Canvas takes a file's bytes in a later request that this route cannot carry, so Morrow sends every file through its reviewed file transfer, which checks the saved file and its bytes. Ask Morrow to prepare the file upload for this same target." |
+| `mints_a_credential` | Create an access token (`POST /v1/users/{user_id}/tokens`) and update or regenerate one (`PUT /v1/users/{user_id}/tokens/{id}`). Morrow never creates a credential | "This change would create or renew a Canvas access token, which is a sign-in credential, and Morrow never creates credentials. Manage your access tokens yourself in your Canvas account settings." |
 
 Morrow's reviewed file transfer (`morrow_plan_canvas_file_upload`, `packages/mcp-server/src/canvas-file-transfer.ts`,
 `connector/extension/src/canvas-file-transfer.js`) carries every upload route in

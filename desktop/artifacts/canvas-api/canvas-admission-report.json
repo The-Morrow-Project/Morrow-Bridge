@@ -7,16 +7,16 @@
     "writes": 559
   },
   "admission": {
-    "admitted": 549,
+    "admitted": 547,
     "admittedByCourseTargetKind": {
-      "none": 293,
+      "none": 291,
       "course_path": 234,
       "semantic_course_object": 16,
       "self_path": 6
     },
     "admittedByAuthority": {
       "course": 238,
-      "site": 311
+      "site": 309
     },
     "admittedCourseByCourseTargetKind": {
       "course_path": 223,
@@ -24,29 +24,30 @@
     },
     "admittedSiteByClass": {
       "account": 115,
-      "person": 96,
+      "person": 95,
       "shared_object": 46,
       "learner_record": 33,
       "multi_course": 11,
-      "session_credential": 10
+      "session_credential": 9
     },
-    "held": 10,
+    "held": 12,
     "heldByReason": {
-      "multi_step_upload_requires_reviewed_transfer": 10
+      "multi_step_upload_requires_reviewed_transfer": 10,
+      "mints_a_credential": 2
     },
     "heldByRouteFamily": {
       "courses": 5,
+      "users": 3,
       "accounts": 1,
       "folders": 1,
       "groups": 1,
-      "sections": 1,
-      "users": 1
+      "sections": 1
     }
   },
   "readback": {
     "stateCounts": {
-      "structurally_exact": 344,
-      "unavailable": 170,
+      "structurally_exact": 343,
+      "unavailable": 169,
       "blocked": 24,
       "unconfirmed": 11
     },
@@ -63,13 +64,13 @@
       "summary_state_has_no_narrow_reader": 1
     },
     "routeTierCounts": {
-      "exact": 213,
+      "exact": 212,
       "created_child": 72,
       "parent_collection": 25,
       "declared": 20,
       "executor": 23,
       "mismatched": 2,
-      "none": 194
+      "none": 193
     },
     "namedReadbackTools": [
       "canvas_bulk_update_assignment_dates",
@@ -118,7 +119,6 @@
       "canvas_complete_quiz_submission_turn_it_in",
       "canvas_copy_file",
       "canvas_copy_folder",
-      "canvas_create_access_token",
       "canvas_create_course_pace",
       "canvas_create_developer_key_account_binding",
       "canvas_create_error_report",
