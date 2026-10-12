@@ -123,8 +123,8 @@ class SafeRedirectSession(requests.Session if requests is not None else object):
       stripping lives in rebuild_auth(), which requests calls
       before sending each redirected request.
 
-    Use this class for every requests.Session() in the moodle lane
-    and lanes/detect.py. The AJAX/form API paths already use
+    Use this class for every requests.Session() in the moodle lane.
+    The AJAX/form API paths already use
     allow_redirects=False and are unaffected.
     """
 

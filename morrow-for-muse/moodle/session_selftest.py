@@ -11,7 +11,7 @@ Covers:
            MOODLE_BASE_ALLOW_HTTP=1 override is honored explicitly;
            https:// and bare hosts normalize to https://; the same
            normalizer guards moodle/login.bootstrap,
-           MoodleSession.__init__, and lanes/detect._normalize_base_url.
+           MoodleSession.__init__, and transport.url.normalize_base_url.
   W4-P2-1  Moodle session-death lifecycle (same requirements as the
            Chromium lane): a classified reauth signal on write or read
            engages the re-auth machine (halt + quarantine + notify) and
@@ -97,11 +97,10 @@ def t_normalize():
           constructed is False)
     check("https: no journal dir created on refusal",
           not os.path.exists(jd))
-    # lanes/detect routes through the same normalizer.
-    sys.path.insert(0, os.path.join(REPO, "lanes"))
-    import detect as lane_detect
+    # The shared normalizer refuses http the same way.
+    from transport.url import normalize_base_url
     try:
-        lane_detect._normalize_base_url("http://m.edu")
+        normalize_base_url("http://m.edu")
         lane_refused = False
     except ValueError:
         lane_refused = True

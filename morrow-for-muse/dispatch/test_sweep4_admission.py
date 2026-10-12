@@ -54,7 +54,7 @@ def test_exception_matcher_boundaries():
     hit = admission._url_exception_hit
     assert hit("https://t/api/v1/users/self", ["/users/self"])
     assert hit("https://t/api/v1/users/self/", ["/users/self"])
-    assert hit("https://t/api/v1/users/self/tokens", ["/users/self"])
+    assert hit("https://t/api/v1/users/self/profile", ["/users/self"])
     assert hit("{canvas_base}/api/v1/users/self", ["/users/self"])
     assert not hit("https://t/api/v1/users/selfish", ["/users/self"])
     assert not hit("https://t/api/v1/courses/1/users?x=/users/self",

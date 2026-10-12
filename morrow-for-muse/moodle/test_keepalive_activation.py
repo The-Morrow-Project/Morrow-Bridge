@@ -170,12 +170,12 @@ def test_unsafe_prefixed_base_rejected_before_journal(tmp_path, bad):
 
 
 def test_prefixed_base_normalizes_for_detection():
-    from lanes import detect
     from moodle.session import normalize_moodle_base
+    from transport.url import normalize_base_url
 
     base = "https://m.edu:8443/moodle"
     assert normalize_moodle_base(base + "/") == base
-    assert detect._normalize_base_url(base + "/") == base
+    assert normalize_base_url(base + "/") == base
 
 
 def test_prefixed_base_reaches_login_and_authenticated_pages(monkeypatch):

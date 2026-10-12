@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Remove unshipped QR OAuth proof and PAT lane probe.
+
 ## 0.4.13 (2026-10-11)
 
 Install `morrow-muse-connector-0.4.13.zip` from the `muse/v0.4.13`

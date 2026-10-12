@@ -44,12 +44,6 @@ updates:
       pip-major:
         patterns: ["*"]
         update-types: [major]
-    ignore:
-      # numpy 2.5 and later need Python 3.12. Morrow for Muse supports
-      # Python 3.11 (morrow-for-muse/install.sh), and requirements-dev.txt
-      # is hash-locked for 3.11 and 3.12.
-      - dependency-name: numpy
-        versions: [">=2.5"]
 
   - package-ecosystem: github-actions
     directory: /

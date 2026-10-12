@@ -2,19 +2,13 @@
 #
 # This lock file is development-only and is never shipped. Requests is a
 # runtime dependency for the Moodle lane and is also pinned in
-# requirements-optional.txt. OpenCV is used only by the dev-only QR proof
-# tool and must not be added to the shipped package.
+# requirements-optional.txt.
 #
 #   requests: the Moodle lane (moodle/session.py, moodle/login.py,
-#     moodle/probe.py, moodle/reauth.py) and the lane detector
-#     (lanes/detect.py). Pinned 2.34.2 (latest on PyPI 2026-09-24); the
-#     runtime copy is in requirements-optional.txt.
-#   opencv-python-headless: qr-proof/qr_proof.py only (`cv2.imread`
-#     + QRCodeDetector on educator-supplied screenshots). Kept as the
-#     executable record of the QR-bootstrapped mobile OAuth proof.
-#     Pinned 5.0.0.93. Untrusted image codec risk: imread parses
-#     attacker-influenced image bytes; the native codecs have a long
-#     CVE history, so the pin stays on an audited build.
+#     moodle/probe.py, moodle/reauth.py). Pinned 2.34.2 (latest on PyPI
+#     2026-09-24); the runtime copy is in requirements-optional.txt.
+#   opencv-python-headless and numpy were removed with the unshipped QR
+#   OAuth proof. Nothing else in this tree imported them.
 #
 # Hash-locked (W4-P2-24/W4-P2-25): --require-hashes means pip verifies
 # every downloaded artifact against one of the hashes below before
@@ -22,19 +16,13 @@
 # --require-hashes pip refuses to install ANY package that lacks a
 # listed hash, including transitive dependencies:
 #   - requests==2.34.2 requires charset-normalizer, idna, urllib3, certifi
-#   - opencv-python-headless==5.0.0.93 requires numpy (>=2 on Python 3.9+)
-#   - numpy==2.4.6 is the latest numpy supporting the Python 3.11 floor
-#     (numpy 2.5 and later require Python >=3.12, so .github/dependabot.yml
-#     ignores them); it has no dependencies.
 #   - charset-normalizer, idna, urllib3, certifi have no runtime deps
 #     (idna/urllib3 extras are not used).
 #
 # Coverage (2026-09-21): wheels for CPython 3.11 and 3.12 on manylinux
 # x86_64 (the reference dev VM), CPython 3.14 on Apple Silicon, plus
 # sdists for the pure-Python packages (requests, idna, urllib3, certifi)
-# and charset-normalizer as the fallback. Binary sdists for numpy and
-# opencv-python-headless are not hashed here; other platforms regenerate
-# via the recipe below.
+# and charset-normalizer as the fallback.
 # Regenerating hashes when a pin is raised: download the new
 # version's artifacts into the scratch lock dir and re-run
 # gen-dev-lock.py, e.g.
@@ -47,19 +35,10 @@
 # Offline-install proof (2026-09-21): a fresh venv installed with
 # --no-index --find-links on the local artifact dir, WITH dependencies
 # (not --no-deps), so the transitive closure is exercised.
-#
-# numpy 2.4.6 (2026-09-23) replaced 2.2.6 after that proof. Its hashes
-# are PyPI's published sha256 digests for CPython 3.11 and 3.12
-# manylinux_2_27 x86_64, CPython 3.14 macOS 14 arm64, and CPython 3.12
-# macOS 14 arm64. The Mac CPython 3.12 hash was added after a failed
-# hash-locked install on that platform.
 --require-hashes
 requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
-opencv-python-headless==5.0.0.93 \
-    --hash=sha256:09a872a157c1376ab922a69bbf22f9a95bcc7b658a9d8b436a60212b02b2eeb4 \
-    --hash=sha256:030ca5e0837a2963ab36ef896baa9767eb8d2b83353fb28af5a521e40dd8756f
 charset-normalizer==3.5.2 \
     --hash=sha256:211d5a3eb6af8f513b8d4ca19a8c1b7accab1b5f0d3175f9826b03c1a920dc1f \
     --hash=sha256:3d31298449090ab8d47b7b1b2a555ff73cac7ed438a08b7ac160980c7ebed649 \
@@ -73,8 +52,3 @@ urllib3==2.8.0 \
 certifi==2026.7.22 \
     --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775 \
     --hash=sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55
-numpy==2.4.6 \
-    --hash=sha256:89cd468399cfd2504718f0ba50e410dca55a170b61a02ad92bb18c8a65186e93 \
-    --hash=sha256:90f9849678c75fe7afa2d348ac842c168b0a4d3d61919687216dfc547976d853 \
-    --hash=sha256:3213d622a0283a39a93d188f3cf72b26862df52fbb4ca3697f51705016523d41 \
-    --hash=sha256:d581b735e177fdcdce6fed8e7e8880a3fb6ee4e3653a3ac6af01c6f4c03effc5

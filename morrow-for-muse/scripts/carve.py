@@ -67,6 +67,8 @@ PINNED_DENY_LIST = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 # Prefixes (directories end with "/") and exact paths never shipped.
 DEV_ONLY = (
+    # The PAT lane probe and the QR OAuth proof were removed. These
+    # prefixes stay denied so a restored copy does not ship.
     "lanes/", "qr-proof/", "platform-asks/", "learners/evidence/",
     "requirements-dev.txt", "requirements-test.txt",
     "scripts/install-robustness-selftest.sh", "scripts/carve.py",

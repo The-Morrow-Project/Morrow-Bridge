@@ -9,13 +9,17 @@
 Morrow for Muse, the no-PAT Canvas/Moodle automation product, deployed as a
 clean product-only tree. This is separate from Claude's desktop MCP version.
 
+**Removal note:** The PAT lane probe (`lanes/detect.py`) and the QR OAuth
+proof (`qr-proof/`) were removed from the repository. The session lane
+remains. The 2026-09-20 receipts below stay as history.
+
 **Components:**
 - Session capture (`session/capture.py`) and CDP support (`session/cdp.py`)
 - LTI provisioning chain (`provision/provision.py`)
 - Product manifest pack (`pack/pack.json`, version 0.3.0, entries intentionally empty)
 - Dispatch executor and journal (`dispatch/executor.py`)
 - Reauthentication state machine (`reauth/state_machine.py`)
-- Lane detection (`lanes/detect.py`)
+- Lane detection (`lanes/detect.py`): removed. The PAT lane probe is not in the repository. The session lane remains.
 - Consent, setup, and revocation content (`content/`)
 - Moodle session, login, probe, and reauth (`moodle/`)
 
@@ -33,7 +37,7 @@ scratch, desktop MCP files, test-only helpers, Mac worktree material.
 - `dispatch/` - executor.py
 - `journal/` - (legacy executor journal path; the live journal is
   per-tree under `~/.morrow/trees/<tree-id>/journal/`)
-- `lanes/` - detect.py
+- `lanes/` - removed with the PAT lane probe
 - `logs/` - keepalive logs, scheduler log, smoke plans
 - `moodle/` - session.py, login.py, probe.py, reauth.py
 - `pack/` - pack.json (product manifest pack)
@@ -170,11 +174,10 @@ a reboot, `bin/morrow start` restarts it.)
 All tests ran through the **deployed** product entry points.
 
 ### 1. Lane detection
-- **PAT lane:** Blocked by institution policy (CHCP does not permit PAT minting).
+- **PAT lane:** Blocked by institution policy on 2026-09-20 (CHCP does not permit PAT minting). The PAT lane probe was later removed. The session lane remains.
 - **Session lane (raw HTTPS):** Blocked by OTP wall (302 to `/login/otp`).
 - **Session lane (in-tab CDP):** **Works.** The product uses this lane.
-- The lane detector (`lanes/detect.py`) correctly fails on raw HTTPS,
-  confirming the OTP wall. The product does not rely on raw cookie replay.
+- The lane detector (`lanes/detect.py`) was removed. On 2026-09-20 it failed on raw HTTPS and confirmed the OTP wall. The product does not rely on raw cookie replay.
 
 ### 2. Session capture
 - Existing session verified: `~/.morrow/session.json`
