@@ -1,6 +1,6 @@
 # v1 capability scope
 
-Morrow for Muse contains Canvas and Moodle operations through installed
+Morrow Bridge for Muse contains Canvas and Moodle operations through installed
 Chromium. Each provider has separate capability evidence. Canvas claims
 below require its operation-specific live proof. Moodle uses the governed
 public CLI and canonical browser adapters; native first-use, attachments,
@@ -172,7 +172,7 @@ live battery marks them live-proven in
   page body, an assignment description), restoring the real text when
   content is saved back (`privacy/course_content.py`). It is a privacy
   control, not a capability, and it is fixture-proven like the by-name
-  flow: the roster read (the same Canvas requests Morrow Bridge
+  flow: the roster read (the same Canvas requests Morrow Bridge for Mac and Windows
   makes) has not yet been run through this lane against a live
   course.
 - Discussions: C-139 (create), C-141 (delete), and C-167 (update) are

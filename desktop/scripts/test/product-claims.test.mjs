@@ -119,7 +119,7 @@ test("every page that states a version names the Morrow product it belongs to", 
 
   const versioning = readFileSync(new URL("docs/versioning.md", repositoryRoot), "utf8");
   const titles = [...versioning.matchAll(/gh release create (\S+)\/vX\.Y\.Z [^`]*--title "([^"]+)"/g)].map(([, tag, title]) => `${tag}: ${title}`);
-  assert.deepEqual(titles, ["desktop: Morrow Bridge for Mac and Windows X.Y.Z", "muse: Morrow for Muse X.Y.Z"], "each release title names its product");
+  assert.deepEqual(titles, ["desktop: Morrow Bridge for Mac and Windows X.Y.Z", "muse: Morrow Bridge for Muse X.Y.Z"], "each release title names its product");
 });
 
 // The root README and docs/products.md send readers to desktop/README.md for Morrow Desktop. Written

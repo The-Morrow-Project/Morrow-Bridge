@@ -35,7 +35,7 @@ test("the repository's security policy sends reports to email, not to a public i
   assert.match(policy, /Morrow Bridge for Mac and Windows/, "SECURITY.md must name the products whose releases receive fixes");
   assert.match(policy, /Security tab/, "SECURITY.md must send reporters to the Security tab");
   assert.match(policy, /Report a vulnerability/, "SECURITY.md must name GitHub private vulnerability reporting");
-  assert.match(policy, /Morrow for Muse/, "SECURITY.md must name the products whose releases receive fixes");
+  assert.match(policy, /Morrow Bridge for Muse/, "SECURITY.md must name the products whose releases receive fixes");
 });
 
 test("a new issue starts from a template, and the chooser links the Security and Support pages", () => {
