@@ -14,7 +14,7 @@ The app plus the Bridge browser extension. Chrome shows the extension as Morrow 
 
 Start: [`desktop/README.md`](../desktop/README.md). Current limits: [`desktop/LIMITATIONS.md`](../desktop/LIMITATIONS.md).
 
-## Morrow for Muse (`morrow-for-muse/`)
+## Morrow Bridge for Muse (`morrow-for-muse/`)
 
 The 0.4.11 release includes the Canvas connector and Moodle browser
 operations. Canvas uses the educator's browser sign-in and the
@@ -25,7 +25,7 @@ authentication modules are source-only test tools and are excluded from
 the package. See `morrow-for-muse/SCOPE.md` for each provider's exact scope and evidence.
 
 - Canvas Plan and Edit: reading a course never needs approval, and Plan asks before each change. Edit is one grant, for the account or for one conversation, to make changes without asking each time. It has no time limit: it stays on until the educator turns it off.
-- Morrow Direct: our open format that describes each course-site action Morrow can take and how it runs. It lives inside Morrow for Muse until a second product uses it.
+- Morrow Direct: our open format that describes each course-site action Morrow can take and how it runs. It lives inside Morrow Bridge for Muse until a second product uses it.
 - Privacy boundary: Canvas student identifiers are replaced with course-scoped labels before supported records reach the assistant. Moodle instructions restrict analytics to approved course-level aggregates. See `morrow-for-muse/privacy/`.
 - Capability claims follow provider-specific evidence. Canvas actions use the live-proven operation catalog; Moodle browser operations use pinned adapters, and their native setup and live proof remain required. See `morrow-for-muse/SCOPE.md` and `morrow-for-muse/moodle/README.md`.
 

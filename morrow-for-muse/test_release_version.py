@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Every statement of the current Morrow for Muse version names VERSION.
+"""Every statement of the current Morrow Bridge for Muse version names VERSION.
 
 Failure mode pinned down (written before the fix; final sweep
 2026-09-23): the tree carried many changes since the published 0.4.0
@@ -43,7 +43,7 @@ def test_pack_names_the_tree_version():
 
 
 def test_skill_names_the_tree_version():
-    stated = re.findall(r"Morrow for Muse connector, v(%s)" % _VER,
+    stated = re.findall(r"Morrow Bridge for Muse connector, v(%s)" % _VER,
                         _read("SKILL.md"))
     assert stated == [_version()]
 

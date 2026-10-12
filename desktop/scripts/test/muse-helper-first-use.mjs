@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * First-use browser proof for the Morrow for Muse sign-in helper.
+ * First-use browser proof for the Morrow Bridge for Muse sign-in helper.
  *
  * Runs the real `morrow-for-muse/helper/server.py` (its own main(), token file, rate limiter and
  * input dispatch) with the Playwright-managed Chrome for Testing as the helper's headless browser.

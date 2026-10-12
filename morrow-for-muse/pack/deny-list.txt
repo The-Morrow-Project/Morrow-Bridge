@@ -1,4 +1,4 @@
-# Morrow for Muse: packaging deny-list.
+# Morrow Bridge for Muse: packaging deny-list.
 #
 # Anything matching the [paths] section must NEVER appear in the carved
 # distribution tree. The carve script enforces a PINNED copy of this file

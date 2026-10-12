@@ -1,4 +1,4 @@
-"""Morrow for Muse: conversational per-educator settings (WORKSTREAM B).
+"""Morrow Bridge for Muse: conversational per-educator settings (WORKSTREAM B).
 
 The mode model is simple: the ONLY difference between plan and edit
 mode is whether writes surface approval. Plan: writes require approval.

@@ -1,4 +1,4 @@
-"""Per-user Plan/Edit mode state for Morrow for Muse (Workstream A).
+"""Per-user Plan/Edit mode state for Morrow Bridge for Muse (Workstream A).
 
 The mode system answers one question: may this write proceed without a
 per-write educator approval? Everything else about the two modes is

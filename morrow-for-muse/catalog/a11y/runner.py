@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A11y mode runner for Morrow for Muse: audit mode and planner mode.
+"""A11y mode runner for Morrow Bridge for Muse: audit mode and planner mode.
 
 This module wires the catalog/a11y/ manifests into executable modes.
 It is deliberately separate from dispatch/executor.py: the F-17 carve
@@ -651,7 +651,7 @@ def render_human(report):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Morrow for Muse a11y mode runner: audit mode and "
+        description="Morrow Bridge for Muse a11y mode runner: audit mode and "
                     "planner mode (plan-class, never dispatches writes).")
     parser.add_argument("--canvas-base", default=None,
                         help="Canvas host (default: CANVAS_BASE from the "

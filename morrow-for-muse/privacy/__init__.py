@@ -1,8 +1,8 @@
-"""Student privacy boundary for Morrow for Muse.
+"""Student privacy boundary for Morrow Bridge for Muse.
 
 Two generations live here side by side.
 
-New (faithful port of the desktop Morrow source privacy boundary,
+New (faithful port of the Morrow Bridge for Mac and Windows source privacy boundary,
 ``origin-morrow/packages/gateway-core/src/source-mcp-privacy.ts`` and
 ``src/privacy.ts``):
 

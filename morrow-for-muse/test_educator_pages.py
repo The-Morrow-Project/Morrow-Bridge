@@ -140,7 +140,7 @@ def test_every_educator_page_says_how_to_get_help(rel):
     # No Muse doc named a way to reach Morrow. setup-guide.md ended "that
     # is a bug, and we want to hear about it" with no address, while the
     # website's Support page expects Muse to help the educator email
-    # Morrow with the Morrow for Muse version (final sweep 2026-09-23).
+    # Morrow with the Morrow Bridge for Muse version (final sweep 2026-09-23).
     text = _flat(rel)
     assert SUPPORT_EMAIL in text, rel
     assert SUPPORT_PAGE in text, rel

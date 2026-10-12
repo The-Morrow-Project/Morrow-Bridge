@@ -24,7 +24,7 @@ if (signedRelease && !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test
 // payload carries the target's runtime layout while this process may not run
 // on the target.
 const targetPlatform = process.env.MORROW_TARGET_PLATFORM || process.platform;
-if (!["darwin", "win32"].includes(targetPlatform)) throw new Error(`Morrow desktop packaging does not support ${targetPlatform}.`);
+if (!["darwin", "win32"].includes(targetPlatform)) throw new Error(`Morrow Bridge for Mac and Windows packaging does not support ${targetPlatform}.`);
 const desktopTarget = targetPlatform === "win32" ? "win32-x64" : "darwin-arm64";
 const packagerAdmission = admitPackagerPayload({
   payload: seed,

@@ -19,7 +19,7 @@ export const ROOT_FILE_READERS = Object.freeze({
   },
   ".gitignore": {
     products: ["muse"],
-    why: "Morrow for Muse has no ignore file of its own, and morrow-for-muse/scripts/test_carve.py checks that its test scratch stays ignored",
+    why: "Morrow Bridge for Muse has no ignore file of its own, and morrow-for-muse/scripts/test_carve.py checks that its test scratch stays ignored",
   },
   LICENSE: {
     products: ["muse"],

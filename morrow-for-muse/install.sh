@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh: Morrow for Muse connector installer.
+# install.sh: Morrow Bridge for Muse connector installer.
 #
 # Idempotent: safe to run twice. A second run converges to the same state
 # without duplicating or destroying anything: the cron entry is never
@@ -826,7 +826,7 @@ if [ ! -f "${TREE_ENV_FILE}" ]; then
   # e.g. "Read-only file system", is printed above by the failing
   # redirection itself, so fail() names it precisely.)
   if cat > "${TREE_ENV_FILE}" <<'EOF'
-# Morrow for Muse: educator config for THIS tree. Uncomment and set your tenant:
+# Morrow Bridge for Muse: educator config for THIS tree. Uncomment and set your tenant:
 # CANVAS_BASE=https://myschool.instructure.com
 # Or select Moodle, including its site path when needed:
 # MORROW_LMS_PROVIDER=moodle

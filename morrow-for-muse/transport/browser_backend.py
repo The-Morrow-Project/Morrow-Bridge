@@ -50,7 +50,7 @@ Session identity: lane state is metadata only (transport/state.py,
 state, verification timestamps. The live session check (users/self with the
 pinned principal) runs inside every browser task, first step.
 
-Transport hardening (P0-3/5/6/8/9, from the desktop Morrow analysis):
+Transport hardening (P0-3/5/6/8/9, from the Morrow Bridge for Mac and Windows analysis):
 
   P0-3 CSRF: every non-GET fetch op carries X-CSRF-Token (harvested fresh
       from the _csrf_token cookie in page context, per call) plus
@@ -412,7 +412,7 @@ _TRANSIENT_AUTH_REFUSAL = frozenset({
 
 
 # --------------------------------------------------------------------------
-# P0-3: CSRF contract. Desktop Morrow reads the _csrf_token cookie fresh in
+# P0-3: CSRF contract. Morrow Bridge for Mac and Windows reads the _csrf_token cookie fresh in
 # page context for EVERY write and sends it as X-CSRF-Token plus
 # X-Requested-With: XMLHttpRequest. The csrf-token meta tag and
 # authenticity_token hidden inputs are never accepted as token sources
@@ -1083,7 +1083,7 @@ def _lane_for(provider, lane_state):
 
 
 # --------------------------------------------------------------------------
-# P0-5: principal verification and session generation. Desktop Morrow
+# P0-5: principal verification and session generation. Morrow Bridge for Mac and Windows
 # verifies the signed-in principal before writes and re-checks at guarded
 # write stages; a mismatch fails closed. The in-page enforcement is the
 # brief's session check (users/self against the pinned principal, with a

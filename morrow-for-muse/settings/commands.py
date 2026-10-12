@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Typed mode and settings commands for Morrow for Muse (WORKSTREAM B).
+"""Typed mode and settings commands for Morrow Bridge for Muse (WORKSTREAM B).
 
 The Muse agent reads what the educator said, decides what they mean, and
 calls one of these commands. No free text reaches this module: every

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build OPERATION_CATALOG.md: the authoritative, evidence-honest operation
-catalog for the Morrow for Muse proof battery.
+catalog for the Morrow Bridge for Muse proof battery.
 
 Reads the desktop operation catalogs (Canvas REST, Moodle browser) as the
 reference surface, filters to course-level operations, and assigns each an
@@ -422,9 +422,9 @@ def main():
     lines = []
     A = lines.append
 
-    A("# Morrow for Muse: Operation Catalog (authoritative)")
+    A("# Morrow Bridge for Muse: Operation Catalog (authoritative)")
     A("")
-    A("Date: %s. Product: Morrow for Muse (no-PAT Canvas/Moodle connector, no MCP)." % DATE)
+    A("Date: %s. Product: Morrow Bridge for Muse (no-PAT Canvas/Moodle connector, no MCP)." % DATE)
     A("This file is the authoritative operation catalog for the proof battery. "
       "It supersedes proof-battery/LEDGER.md, which is kept as-is for history.")
     A("")
@@ -713,7 +713,7 @@ def main():
     A("## Privacy gate: learner-data operations")
     A("")
     A("Rule: no learner-data operation is live-tested until the learner "
-      "tokenization boundary lands in Morrow for Muse. The desktop privacy engine "
+      "tokenization boundary lands in Morrow Bridge for Muse. The desktop privacy engine "
       "(LearnerVault, scoped learner tokens, output projection) exists in "
       "morrow-fix/packages/gateway-core/src/privacy.ts; the Muse deploy only has "
       "generic key-pattern redaction in dispatch/executor.py. Until the boundary "

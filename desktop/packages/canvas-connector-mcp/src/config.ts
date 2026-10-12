@@ -59,7 +59,7 @@ interface ExactPrivateBytes {
 
 const stateQueues = new Map<string, Promise<void>>();
 const MAX_STATE_BYTES = 64 * 1024;
-// Morrow Desktop records the Bridge folder it set up, with that folder's active-folder
+// Morrow Bridge for Mac and Windows records the Bridge folder it set up, with that folder's active-folder
 // challenge, in this file of the State folder the connector state lives in.
 const BRIDGE_FOLDER_RECORD = "bridge-installation.json";
 const MAX_BRIDGE_FOLDER_RECORD_BYTES = 1024 * 1024;

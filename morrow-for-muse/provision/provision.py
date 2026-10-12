@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Item Bank credential provisioner for Morrow for Muse: frame-bound launch/capture.
+"""Item Bank credential provisioner for Morrow Bridge for Muse: frame-bound launch/capture.
 
-Design (desktop Morrow evidence, reconciled 2026-09-21):
+Design (Morrow Bridge for Mac and Windows evidence, reconciled 2026-09-21):
 
-  Desktop Morrow NEVER mints Item Bank credentials server side. The five-step
+  Morrow Bridge for Mac and Windows NEVER mints Item Bank credentials server side. The five-step
   mint chain this file used to implement (workflow-token mint, banks page
   read, native launch, scoped-token mint, quiz-api use) was our own invention
   and is DELETED. It must not be revived. There is no server-side fallback.

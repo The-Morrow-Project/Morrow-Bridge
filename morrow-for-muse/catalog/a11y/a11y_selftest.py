@@ -155,9 +155,9 @@ check("honesty: interpretation present and not-a-violation",
 check("honesty: render_evidence unavailable",
       result["render_evidence"]["status"] == "unavailable")
 # The reason reaches the assistant; the desktop product's public name is
-# Morrow Desktop (final sweep 2026-09-23: it said "Desktop Morrow").
-check("honesty: render_evidence reason names Morrow Desktop",
-      "Morrow Desktop" in result["render_evidence"]["reason"]
+# Morrow Bridge for Mac and Windows (final sweep 2026-09-23: it said "Desktop Morrow").
+check("honesty: render_evidence reason names Morrow Bridge for Mac and Windows",
+      "Morrow Bridge for Mac and Windows" in result["render_evidence"]["reason"]
       and "Desktop Morrow" not in result["render_evidence"]["reason"])
 check("honesty: media metadata manual review",
       result["media_metadata"]["status"] == "manual_review_required"

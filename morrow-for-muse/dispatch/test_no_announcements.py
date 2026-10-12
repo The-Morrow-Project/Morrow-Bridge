@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Morrow for Muse never posts an announcement, and holds discussion writes.
+"""Morrow Bridge for Muse never posts an announcement, and holds discussion writes.
 
 Failure modes this suite pins down (written before the fix; final sweep
 2026-09-23):

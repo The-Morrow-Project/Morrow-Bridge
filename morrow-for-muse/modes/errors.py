@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Failure modes for the Morrow for Muse mode system (Workstream A).
+"""Failure modes for the Morrow Bridge for Muse mode system (Workstream A).
 
 Exception names are the contract with failures/catalog.json (Workstream C):
 the translator matches by class NAME and merges scalar exception attributes

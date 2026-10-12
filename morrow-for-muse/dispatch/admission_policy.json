@@ -31,7 +31,7 @@
   ]
  },
  "evidence_holds": {
-  "note": "Operations that are not yet live-proven through Morrow for Muse. Refused on EVERY tenant until a disposable, isolated, fully cleaned-up live battery proves the complete path. When one is proven it is admitted on ALL tenants. There are no tenant allowlists: no tenant is ever gated, restricted, or treated differently from any other.",
+  "note": "Operations that are not yet live-proven through Morrow Bridge for Muse. Refused on EVERY tenant until a disposable, isolated, fully cleaned-up live battery proves the complete path. When one is proven it is admitted on ALL tenants. There are no tenant allowlists: no tenant is ever gated, restricted, or treated differently from any other.",
   "reasons": {
    "canvas_create_new_discussion_topic_courses": "discussion create (C-139) proven only through the retired form lane (2026-09-20), never on the Chromium lane; held until a Chromium-lane battery proves it",
    "canvas_delete_conclude_course": "destructive whole-course operation, never live-proven through the admission gate; held until a disposable live battery proves the complete path",
@@ -257,9 +257,9 @@
   ],
   "write_url_substrings_note": "These URL patterns refuse changes only: any request that is not a GET or HEAD, and every request of an operation that is not a read. Changing CSP settings affects account security (C-93 is also named in tool_names); reading a course's CSP settings changes nothing, and C-94 is a live-proven read.",
   "request_flags": {
-   "is_announcement": "posts an announcement and notifies every student in the course; Morrow for Muse never posts announcements, even when asked",
-   "notify_of_update": "sends every student in the course a notice about the change; Morrow for Muse never sends messages to people, even when asked",
-   "as_user_id": "makes Canvas act as another person (masquerading); Morrow for Muse never acts as anyone other than you, even when asked"
+   "is_announcement": "posts an announcement and notifies every student in the course; Morrow Bridge for Muse never posts announcements, even when asked",
+   "notify_of_update": "sends every student in the course a notice about the change; Morrow Bridge for Muse never sends messages to people, even when asked",
+   "as_user_id": "makes Canvas act as another person (masquerading); Morrow Bridge for Muse never acts as anyone other than you, even when asked"
   },
   "request_flags_note": "A request whose query, body, or URL query sets one of these keys to anything Canvas does not read as false is refused on every route and every lane, before approval, with no override. The catalog's excluded set names the announcement variants of discussion create; the flag rule covers every route that accepts it, the topic update included. notify_of_update rides on assignment, page, and classic quiz create and edit; as_user_id (masquerading) rides on any route, a read included. The consent page lists all three under what Morrow will not do in this version, even if you ask."
  },

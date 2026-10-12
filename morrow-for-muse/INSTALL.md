@@ -1,8 +1,8 @@
-# Installing the Morrow for Muse connector
+# Installing the Morrow Bridge for Muse connector
 
 This document is for the operator installing the connector on a Muse
 VM. If you are an educator who wants to use Morrow, you do not install
-anything: open Muse and say "Set up Morrow for Muse by following
+anything: open Muse and say "Set up Morrow Bridge for Muse by following
 https://meetmorrow.app/morrow-for-muse", then follow the conversation
 (`content/setup-guide.md` is the educator walkthrough and
 `FIRST_RUN.md` is the agent's first-hour checklist).

@@ -2,11 +2,11 @@
 
 This directory ports the Morrow Bridge accessibility audit system
 (`packages/mcp-server/src/course-audit.ts`, `page-correction.ts`,
-`item-bank-repair.ts`) into Morrow for Muse catalog entries. It is the
+`item-bank-repair.ts`) into Morrow Bridge for Muse catalog entries. It is the
 missing a11y scanner: read-only signal detection plus ten guarded
 image-alt repair planners.
 
-## Canvas accessibility parity checker (Morrow for Muse)
+## Canvas accessibility parity checker (Morrow Bridge for Muse)
 
 `canvas_parity_rules.py` is a faithful port of Instructure's
 `tinymce-a11y-checker` (MIT licensed,
@@ -140,7 +140,7 @@ are live-verified (2026-09-22, course 89585; report at
 `~/workspace/audits/a11y-parity-2026-09-22/REPORT.md`). Every other entry
 in this directory is marked `evidence_status: live-unverified`. The
 detector and planner guards are unit-proven (74 checks, zero network).
-No live tenant battery has run through Morrow for Muse for the repair
+No live tenant battery has run through Morrow Bridge for Muse for the repair
 planners. The runner (`catalog/a11y/runner.py`, 2026-09-22) wires audit
 mode and planner mode without touching `dispatch/executor.py`: 4 Canvas
 target kinds with live-proven reads are wired (page, assignment, new quiz,

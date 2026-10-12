@@ -44,7 +44,7 @@ This package is pseudonymization on EGRESS: learner identities from
 the LMS become stable course-local `Student A<n>` labels before
 anything is agent-visible or journaled. The production Meridian JS
 privacy boundary (`privacy_boundary.js` on the team kit) also has an
-INGRESS half (PII detection on what a person types). Morrow for Muse
+INGRESS half (PII detection on what a person types). Morrow Bridge for Muse
 has no ingress half: it cannot intercept the educator's messages to
 Muse, so names the educator types reach the Muse model. Morrow keeps
 every other student identifier from the LMS out. The selftest's Part

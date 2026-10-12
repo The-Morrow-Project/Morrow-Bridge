@@ -108,7 +108,7 @@ _FALLBACK_MESSAGE = (
     "cannot tell you why from the available evidence. "
     "What happens next: I am not retrying anything that might have "
     "applied. If it happens again, you can email hello@meetmorrow.app "
-    "with reference {correlation_id}, the Morrow for Muse version, and "
+    "with reference {correlation_id}, the Morrow Bridge for Muse version, and "
     "what you asked for. Leave student information out of the email."
 )
 

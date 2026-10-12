@@ -83,8 +83,14 @@ test("the claim documents use none of the retired phrases", () => {
 
 // The dated working records under docs/implementation and docs/research quote retired wording to
 // explain why it was retired. Every other Markdown or HTML page in the repository, including the
-// root README, docs/ and Morrow for Muse, is product-facing and is held to the same list.
+// root README, docs/ and Morrow Bridge for Muse, is product-facing and is held to the same list.
 const INTERNAL_RECORDS = /^desktop\/docs\/(?:implementation|research)\//u;
+
+// Records of what was true on a date keep the product name they were published with: the
+// changelogs, the Muse audits, platform asks and proof ledger, and the dated release records in
+// docs/versioning.md.
+const HISTORICAL_PAGES = /(?:^|\/)CHANGELOG\.md$|^morrow-for-muse\/(?:audit\/|platform-asks\/|proof-battery\/LEDGER\.md$)/u;
+const DATED_RELEASE_RECORD = /^(?:Desktop|Muse) \d+\.\d+\.\d+ is published .*\(\d{4}-\d{2}-\d{2}/u;
 
 test("no product-facing page anywhere in the repository uses a retired phrase", () => {
   const repositoryRoot = new URL("../", root);
@@ -94,15 +100,19 @@ test("no product-facing page anywhere in the repository uses a retired phrase", 
   for (const page of ["README.md", "docs/products.md", "docs/versioning.md", "desktop/README.md", "morrow-for-muse/SKILL.md", "morrow-for-muse/content/consent.md"]) {
     assert.ok(pages.includes(page), `the retired-phrase scan must read ${page}`);
   }
-  const found = pages.flatMap((page) =>
-    findRetiredPhrases(readFileSync(new URL(page, repositoryRoot), "utf8")).map((hit) => `${page}:${hit.line} "${hit.phrase}" in: ${hit.sentence}`),
-  );
+  const found = pages.filter((page) => !HISTORICAL_PAGES.test(page)).flatMap((page) => {
+    const text = readFileSync(new URL(page, repositoryRoot), "utf8");
+    const lines = text.split("\n");
+    return findRetiredPhrases(text)
+      .filter((hit) => !DATED_RELEASE_RECORD.test(lines[hit.line - 1]))
+      .map((hit) => `${page}:${hit.line} "${hit.phrase}" in: ${hit.sentence}`);
+  });
   assert.deepEqual(found, [], "these phrases are retired; scripts/test/lib/retired-claims.mjs says what each one got wrong");
 });
 
-// The desktop product's public name is Morrow Desktop, for Mac and Windows. "Morrow" alone is the
+// The desktop product's public name is Morrow Bridge for Mac and Windows. "Morrow" alone is the
 // family and the app's own name on the computer, so a version number needs the product it belongs
-// to: Morrow Desktop, Morrow Bridge, or Morrow for Muse. Written before the fix (final sweep
+// to: Morrow Bridge for Mac and Windows, Morrow Bridge, or Morrow Bridge for Muse. Written before the fix (final sweep
 // 2026-09-23): LIMITATIONS.md said "Morrow `1.0.5`", the website said "Morrow for Mac and Windows",
 // and the existing release was titled "Morrow 1.0.4", so one product had three names.
 test("every page that states a version names the Morrow product it belongs to", () => {
@@ -115,14 +125,14 @@ test("every page that states a version names the Morrow product it belongs to", 
     return [...text.matchAll(/\bMorrow `?v?\d+\.\d+(?:\.\d+)?/g)]
       .map((match) => `${page}:${text.slice(0, match.index).split("\n").length} "${match[0]}"`);
   });
-  assert.deepEqual(unnamed, [], "write Morrow Desktop, Morrow Bridge, or Morrow for Muse before a version number");
+  assert.deepEqual(unnamed, [], "write Morrow Bridge for Mac and Windows, Morrow Bridge, or Morrow Bridge for Muse before a version number");
 
   const versioning = readFileSync(new URL("docs/versioning.md", repositoryRoot), "utf8");
   const titles = [...versioning.matchAll(/gh release create (\S+)\/vX\.Y\.Z [^`]*--title "([^"]+)"/g)].map(([, tag, title]) => `${tag}: ${title}`);
-  assert.deepEqual(titles, ["desktop: Morrow Bridge for Mac and Windows X.Y.Z", "muse: Morrow for Muse X.Y.Z"], "each release title names its product");
+  assert.deepEqual(titles, ["desktop: Morrow Bridge for Mac and Windows X.Y.Z", "muse: Morrow Bridge for Muse X.Y.Z"], "each release title names its product");
 });
 
-// The root README and docs/products.md send readers to desktop/README.md for Morrow Desktop. Written
+// The root README and docs/products.md send readers to desktop/README.md for Morrow Bridge for Mac and Windows. Written
 // before the fix (final sweep 2026-09-23): that page was titled "# Morrow" and never said "Morrow
 // Desktop", pages called the product "the Morrow desktop app", and Morrow for Muse documents called
 // it "the desktop Morrow".
@@ -324,7 +334,7 @@ test("every landing paragraph that names an assistant states each assistant's li
   assert.deepEqual(problems, [], `${ASSISTANT_PROOF_RECORD} is the record of which assistant ran on a live course`);
 });
 
-// Morrow Desktop opens only where its Electron build opens. installer/electron-builder.config.cjs
+// Morrow Bridge for Mac and Windows opens only where its Electron build opens. installer/electron-builder.config.cjs
 // sets no minimumSystemVersion, so the macOS floor is the LSMinimumSystemVersion in Electron's own
 // Info.plist: 13.0 in electron-v44.4.3-darwin-arm64.zip. Electron 44's electron.exe declares
 // Windows 10.0 as its minimum operating system. A new Electron major can raise either floor, so the
@@ -339,7 +349,7 @@ const DESKTOP_FLOOR_STATEMENTS = [
   ["LIMITATIONS.md", /^- Morrow builds for /],
 ];
 
-test("every document that says where Morrow Desktop runs states the macOS and Windows floors of its build", () => {
+test("every document that says where Morrow Bridge for Mac and Windows runs states the macOS and Windows floors of its build", () => {
   const electron = JSON.parse(read("installer/package.json")).devDependencies.electron;
   assert.equal(Number(electron.split(".")[0]), DESKTOP_FLOOR.electronMajor,
     `installer/package.json pins Electron ${electron}: read LSMinimumSystemVersion from its Info.plist and the minimum operating system of its electron.exe, then update DESKTOP_FLOOR and the documents`);
@@ -352,7 +362,7 @@ test("every document that says where Morrow Desktop runs states the macOS and Wi
     if (found.length === 0) problems.push(`${doc} has no paragraph matching ${where}`);
     for (const paragraph of found) {
       const missing = [DESKTOP_FLOOR.mac, DESKTOP_FLOOR.windows].filter((floor) => !paragraph.text.includes(floor));
-      if (missing.length > 0) problems.push(`${doc}:${paragraph.line} says where Morrow Desktop runs without: ${missing.join(", ")}`);
+      if (missing.length > 0) problems.push(`${doc}:${paragraph.line} says where Morrow Bridge for Mac and Windows runs without: ${missing.join(", ")}`);
     }
   }
   assert.deepEqual(problems, [], "an educator on an older macOS or Windows must learn it before downloading");

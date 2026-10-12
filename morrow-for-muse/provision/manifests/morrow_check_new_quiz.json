@@ -26,7 +26,7 @@
    "credential expired (older than 10 minutes) or presented for a second operation"
   ],
   "fail_closed_rule": "When any fail-closed condition holds, the bank steps are skipped and the entry reports the banks unchecked with reason item_bank_capture_unavailable; the quiz steps still run. There is no ServicesJwt fallback and no server-side mint.",
-  "proven_on": "desktop Morrow source evidence 2026-09-21 (captured, never minted); Morrow-for-Muse live battery pending",
+  "proven_on": "Morrow Bridge for Mac and Windows source evidence 2026-09-21 (captured, never minted); Morrow Bridge for Muse live battery pending",
   "retry_policy": "single capture attempt per launch with a 45 s window; capture timeout fails closed (the launch is not blindly retried); expired or consumed credentials are never re-presented"
  },
  "manifest": "morrow.manifest.v0",
