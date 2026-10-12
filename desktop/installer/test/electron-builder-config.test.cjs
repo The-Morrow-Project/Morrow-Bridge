@@ -256,17 +256,36 @@ test("the packaged application is the installer source, sealed, with a fixed fil
   });
 });
 
-test("the build identifies as Morrow Desktop while keeping its internal executable and artifact names stable", async (t) => {
+test("the build identifies as Morrow Bridge while keeping its internal executable and artifact names stable", async (t) => {
   const { payload } = await preparedPayload(t);
   const config = loadConfig({ payload });
   const manifest = require(manifestPath);
   assert.equal(config.appId, "app.meetmorrow.installer");
-  assert.equal(config.productName, "Morrow Desktop");
+  assert.equal(config.productName, "Morrow Bridge");
   assert.equal(config.executableName, "Morrow");
-  assert.equal(config.dmg.title, "Morrow Desktop");
+  assert.equal(config.dmg.title, "Morrow Bridge");
   assert.deepEqual(manifest.author, { name: "Braden Riggins" });
   assert.equal(config.copyright, "Copyright © 2026 Braden Riggins");
   assert.equal(config.artifactName, "Morrow-${version}-${os}-${arch}.${ext}");
+});
+
+// Electron derives the user-data folder (State, Materials, and the Bridge folder
+// Chrome loads the extension from) from the app name the first time a path is
+// read. main.cjs pins that name, so a new productName must not reach it.
+test("the product name can change without moving the user-data folder", async (t) => {
+  const { payload } = await preparedPayload(t);
+  const config = loadConfig({ payload });
+  const manifest = require(manifestPath);
+  const main = await fs.readFile(path.join(installerRoot, "main.cjs"), "utf8");
+  const setName = main.indexOf('app.setName("Morrow");');
+  const firstPathCall = main.search(/\bapp\.(?:getPath|setPath)\(/);
+  assert.notEqual(setName, -1, 'main.cjs must call app.setName("Morrow")');
+  assert.notEqual(firstPathCall, -1);
+  assert.ok(setName < firstPathCall, "app.setName must run before any app.getPath or app.setPath call");
+  assert.equal(Object.hasOwn(manifest, "productName"), false, "the packaged package.json must not carry a productName");
+  assert.equal(manifest.name, "morrow-installer");
+  assert.equal(Object.hasOwn(config.extraMetadata, "productName"), false, "extraMetadata is merged into the packaged package.json");
+  assert.equal(Object.hasOwn(config.extraMetadata, "name"), false, "extraMetadata is merged into the packaged package.json");
 });
 
 test("the build targets exactly a macOS arm64 disk image and zip and a Windows x64 one-click installer", async (t) => {

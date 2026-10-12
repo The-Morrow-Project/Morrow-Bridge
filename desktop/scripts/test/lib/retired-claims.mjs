@@ -23,8 +23,8 @@
  * - "Morrow for Muse" was the earlier name of the Muse connector, now Morrow Bridge for Muse.
  *
  * Changelogs and dated records keep the name a release was published with, so the repository scan in
- * `product-claims.test.mjs` skips them. The build identity `productName: "Morrow Desktop"` is not
- * Markdown or HTML, so this scan does not read it. It stays until the productName decision is made.
+ * `product-claims.test.mjs` skips them. The build identity `productName: "Morrow Bridge"` is not
+ * Markdown or HTML, so this scan does not read it.
  */
 export const RETIRED_PHRASES = [
   "Development preview",
