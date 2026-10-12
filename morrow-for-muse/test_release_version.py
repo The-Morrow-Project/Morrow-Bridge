@@ -52,7 +52,7 @@ def test_install_guide_downloads_the_tree_version():
     version = _version()
     text = _read("INSTALL.md")
     changelog = _read("CHANGELOG.md")
-    url = ("https://github.com/bradenriggins/morrow/releases/download/"
+    url = ("https://github.com/The-Morrow-Project/Morrow-Bridge/releases/download/"
            "muse/v%s/morrow-muse-connector-%s.zip" % (version, version))
     if re.search(r"^## %s \(unreleased\)$" % re.escape(version),
                  changelog, re.MULTILINE):

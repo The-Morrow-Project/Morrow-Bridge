@@ -1,8 +1,8 @@
 # Morrow Desktop
 
 
-[![CI](https://github.com/bradenriggins/morrow/actions/workflows/ci.yml/badge.svg)](https://github.com/bradenriggins/morrow/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/github/license/bradenriggins/morrow)](LICENSE)
+[![CI](https://github.com/The-Morrow-Project/Morrow-Bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/The-Morrow-Project/Morrow-Bridge/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/The-Morrow-Project/Morrow-Bridge)](LICENSE)
 [![Website](https://img.shields.io/badge/website-meetmorrow.app-1f6feb)](https://meetmorrow.app)
 
 Morrow Desktop, the app for Mac and Windows, connects the AI assistant you already use to your Canvas and Moodle courses, and to a configured Blackboard course.

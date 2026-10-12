@@ -304,7 +304,7 @@ test("a signed release of a stable version code-signs and turns updates on", asy
   assert.equal(config.extraMetadata.morrow.desktopUpdates.enabled, true);
   assert.deepEqual(config.publish, [{
     provider: "github",
-    owner: "bradenriggins",
+    owner: "The-Morrow-Project",
     repo: "morrow-downloads",
     channel: "latest",
     releaseType: "release"
@@ -442,8 +442,11 @@ test("the signed build publishes to, and looks for updates on, the GitHub stable
   assert.equal(typeof enabled, "boolean");
   assert.deepEqual(feed, UPDATE_FEED);
   const guide = await fs.readFile(path.join(installerRoot, "UPDATES.md"), "utf8");
+  assert.equal(CANONICAL_UPDATE_FEED.owner, "The-Morrow-Project");
+  assert.equal(CANONICAL_UPDATE_FEED.repo, "morrow-downloads");
   assert.match(guide, new RegExp("`" + CANONICAL_UPDATE_FEED.owner + "/" + CANONICAL_UPDATE_FEED.repo + "`"));
-  assert.doesNotMatch(guide, /`bradenriggins\/morrow`/);
+  assert.match(guide, /Never recreate repos named `bradenriggins\/morrow` or `bradenriggins\/morrow-downloads`, because that would break the redirect that old installs rely on\./);
+  assert.doesNotMatch(guide, /`The-Morrow-Project\/Morrow-Bridge`/);
 });
 
 test("a build without an absolute prepared payload is refused", async () => {

@@ -46,7 +46,7 @@
       "command": "${MORROW_NODE_COMMAND:-node}",
       "args": ["packages/legacy-bridge-mcp/dist/index.js"],
       "cwd": "${MORROW_NEW_REPO_ROOT}",
-      "repository": "bradenriggins/morrow",
+      "repository": "The-Morrow-Project/Morrow-Bridge",
       "revision": "${MORROW_RELEASE_REVISION}",
       "attestation": {
         "kind": "local-git",
