@@ -233,7 +233,7 @@
   ]
  },
  "never_dispatch": {
-  "note": "These operations are never dispatchable through the installed product, for any caller, even with educator approval. They are the standing exclusions (proof directive 2026-09-20) and the catalog's excluded set: announcements, messages to people, support tickets, and operations that affect more than one course. canvas_create_external_feed_courses is here because an announcement external feed posts every item of the feed as an announcement.",
+  "note": "These operations are never dispatchable through the installed product, for any caller, even with educator approval. They are the standing exclusions (proof directive 2026-09-20) and the catalog's excluded set: announcements, messages to people, support tickets, and operations that affect more than one course. canvas_create_external_feed_courses is here because an announcement external feed posts every item of the feed as an announcement. canvas_create_external_tool_courses is here because it takes the tool's LTI 1.1 consumer_key and shared_secret, and the approval display, plan files, and receipts would keep them; it comes back when credential inputs are handled without persisting them (THE-87).",
   "tool_names": [
    "canvas_begin_migration_to_push_to_associated_courses",
    "canvas_set_or_remove_restrictions_on_blueprint_course_object",
@@ -243,7 +243,8 @@
    "canvas_set_feature_flag_courses",
    "canvas_disable_assignments_currently_enabled_for_grade_export_to_sis",
    "canvas_send_message_to_unsubmitted_or_submitted_users_for_quiz",
-   "canvas_create_external_feed_courses"
+   "canvas_create_external_feed_courses",
+   "canvas_create_external_tool_courses"
   ],
   "url_substrings": [
    "/conversations",

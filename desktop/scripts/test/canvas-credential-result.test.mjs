@@ -61,6 +61,20 @@ test("every write that mints, regenerates, or returns a credential is held befor
   assert.equal(canvasOperationAdmission(operation("canvas_create_access_token")).siteClass, "session_credential");
 });
 
+test("every write that carries a typed password or shared secret is held before dispatch and never offered", () => {
+  const options = categoriesForBinding({ provider: "canvas" }, canvasOperations);
+  const receiving = [
+    "canvas_add_observee_with_credentials", "canvas_create_user", "canvas_create_user_login",
+    "canvas_edit_user_login", "canvas_create_external_tool_accounts", "canvas_create_external_tool_courses",
+  ];
+  assert.deepEqual(canvasOperations.filter((entry) => canvasOperationAdmission(entry).write.reason === "receives_a_credential")
+    .map((entry) => entry.toolName).sort(), [...receiving].sort());
+  for (const toolName of receiving) {
+    assert.deepEqual(canvasOperationAdmission(operation(toolName)).write, { state: "held", reason: "receives_a_credential" }, toolName);
+    assert.equal(options.find((entry) => entry.id === `action:canvas:${toolName}`), undefined, toolName);
+  }
+});
+
 test("a minted bearer secret never reaches a result handed back", () => {
   const { withoutSessionCredentialSecrets } = redactor();
   const minted = {

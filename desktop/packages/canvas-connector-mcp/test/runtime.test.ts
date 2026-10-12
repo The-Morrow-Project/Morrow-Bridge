@@ -1032,7 +1032,7 @@ describe("CanvasConnectorRuntime", () => {
     expect(commands).toBe(2);
   });
 
-  it("sends no Bridge command for any Canvas write that mints, regenerates, or returns a credential", async () => {
+  it("sends no Bridge command for any Canvas write that mints, returns, or carries a credential", async () => {
     const runtime = await start();
     const socket = sockets.at(-1)!;
     let commands = 0;
@@ -1063,6 +1063,22 @@ describe("CanvasConnectorRuntime", () => {
         ...args,
         _morrow: { source_binding_id: "canvas:test-account", outer_grant: grant },
       }), toolName).toMatchObject({ ok: false, resultState: "not_sent", problem: { message: expect.stringContaining("does not create or receive credentials") } });
+    }
+    const receiving: Record<string, Record<string, string>> = {
+      canvas_add_observee_with_credentials: { user_id: "self", observee_unique_id: "student", observee_password: "FAKE-PASSWORD-123" },
+      canvas_create_user: { account_id: "1", pseudonym_unique_id: "new.user", pseudonym_password: "FAKE-PASSWORD-123" },
+      canvas_create_user_login: { account_id: "1", user_id: "7", login_unique_id: "new.login", login_password: "FAKE-PASSWORD-123" },
+      canvas_edit_user_login: { account_id: "1", id: "9", login_password: "FAKE-PASSWORD-123" },
+      canvas_create_external_tool_accounts: { account_id: "1", consumer_key: "FAKE-KEY", shared_secret: "FAKE-SECRET" },
+      canvas_create_external_tool_courses: { course_id: "42", consumer_key: "FAKE-KEY", shared_secret: "FAKE-SECRET" },
+    };
+    for (const [toolName, args] of Object.entries(receiving)) {
+      const result = await runtime.call(toolName, {
+        ...args,
+        _morrow: { source_binding_id: "canvas:test-account", outer_grant: grant },
+      });
+      expect(result, toolName).toMatchObject({ ok: false, resultState: "not_sent", problem: { message: expect.stringContaining("does not yet keep typed credentials") } });
+      expect(JSON.stringify(result), toolName).not.toMatch(/FAKE-(?:PASSWORD|KEY|SECRET)/);
     }
     expect(commands).toBe(0);
   });

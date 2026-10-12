@@ -153,7 +153,7 @@ def write_entry(name="canvas_create_page", method="POST",
 def t_policy_shape():
     p = load_policy()
     assert p["version"] == "1.4.0", "policy version"
-    assert len(p["never_dispatch"]["tool_names"]) == 9, "9 never-dispatch tools"
+    assert len(p["never_dispatch"]["tool_names"]) == 10, "10 never-dispatch tools"
     assert sorted(p["never_dispatch"]["request_flags"]) == [
         "as_user_id", "is_announcement", "notify_of_update"]
     assert "canvas_item_bank_get_item" in p["unsupported"]["tool_names"]

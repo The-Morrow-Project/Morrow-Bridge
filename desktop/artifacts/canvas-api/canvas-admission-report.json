@@ -7,38 +7,39 @@
     "writes": 559
   },
   "admission": {
-    "admitted": 537,
+    "admitted": 531,
     "admittedByCourseTargetKind": {
-      "none": 281,
-      "course_path": 234,
+      "none": 276,
+      "course_path": 233,
       "semantic_course_object": 16,
       "self_path": 6
     },
     "admittedByAuthority": {
-      "course": 238,
-      "site": 299
+      "course": 237,
+      "site": 294
     },
     "admittedCourseByCourseTargetKind": {
-      "course_path": 223,
+      "course_path": 222,
       "semantic_course_object": 15
     },
     "admittedSiteByClass": {
-      "account": 111,
-      "person": 95,
+      "account": 107,
+      "person": 94,
       "shared_object": 46,
       "learner_record": 33,
       "multi_course": 11,
       "session_credential": 3
     },
-    "held": 22,
+    "held": 28,
     "heldByReason": {
       "mints_a_credential": 12,
-      "multi_step_upload_requires_reviewed_transfer": 10
+      "multi_step_upload_requires_reviewed_transfer": 10,
+      "receives_a_credential": 6
     },
     "heldByRouteFamily": {
-      "courses": 5,
-      "users": 5,
-      "accounts": 4,
+      "accounts": 8,
+      "courses": 6,
+      "users": 6,
       "jwts": 2,
       "developer_keys": 1,
       "folders": 1,
@@ -50,8 +51,8 @@
   },
   "readback": {
     "stateCounts": {
-      "structurally_exact": 340,
-      "unavailable": 162,
+      "structurally_exact": 336,
+      "unavailable": 160,
       "blocked": 24,
       "unconfirmed": 11
     },
@@ -68,13 +69,13 @@
       "summary_state_has_no_narrow_reader": 1
     },
     "routeTierCounts": {
-      "exact": 211,
-      "created_child": 70,
-      "parent_collection": 25,
+      "exact": 209,
+      "created_child": 69,
+      "parent_collection": 24,
       "declared": 20,
       "executor": 23,
       "mismatched": 2,
-      "none": 186
+      "none": 184
     },
     "namedReadbackTools": [
       "canvas_bulk_update_assignment_dates",
@@ -96,7 +97,6 @@
       "canvas_add_last_attended_date",
       "canvas_add_message",
       "canvas_add_multiple_allowed_domains_to_account",
-      "canvas_add_observee_with_credentials",
       "canvas_add_recipients",
       "canvas_add_tool_to_top_navigation_favorites",
       "canvas_add_users_to_content_share",
@@ -126,7 +126,6 @@
       "canvas_create_course_pace",
       "canvas_create_developer_key_account_binding",
       "canvas_create_error_report",
-      "canvas_create_external_tool_accounts",
       "canvas_create_feedback_on_conversation_message",
       "canvas_create_folder_accounts",
       "canvas_create_group_groups",

@@ -1,7 +1,9 @@
 # THE-28 credential scan receipt
 
 Result: the QR OAuth proof, the PAT probe, and the Canvas session-cookie capture are gone, and
-Morrow no longer mints, regenerates, or receives a Canvas credential. One borrowed credential remains, by decision: both
+Morrow sends none of the 12 Canvas writes that mint, regenerate, or return a credential, and none of
+the 6 writes that carry a password or shared secret the person types (held until THE-87 keeps typed
+credentials out of Morrow's records). One borrowed credential remains, by decision: both
 products reuse the Item Banks app's own token for Morrow's Item Bank calls. It stays in personal
 mode until Linear THE-85 replaces or removes it, and the CI gate allows it only at the sites listed
 below.
@@ -69,7 +71,7 @@ the helper's own tab and copies no cookie, so no working personal-mode flow used
 | `morrow-for-muse/reauth/wave5_resource_selftest.py`, `reauth/session_lifecycle_selftest.py`, `scripts/test_s4_install_lane.py` | Tests for the removed code removed | They tested `reauth()`, `_complete_reauth()`, and `keepalive-canvas.sh`. |
 | `morrow-for-muse/transport/local_chromium_selftest.py` | New check | The proxy allowlist must not contain `Network.getCookies`. |
 | `morrow-for-muse/dispatch/executor.py` | `inject_cookie_header` removed; a non-string credential slot now fails closed | The rig HTTPS lane could still send a dict in `canvas.pat` as a `Cookie` header. |
-| `desktop/packages/canvas-api-catalog/src/operation-admission.ts` (+ generated `connector/extension/generated/canvas-operation-admission.js`, `artifacts/canvas-api/canvas-admission-report.json`) | 12 credential routes held with reason `mints_a_credential` (listed below) | Morrow does not mint, regenerate, or receive a credential. The Bridge no longer offers these changes and the connector sends no command for them; the result redaction stays as defense in depth. Tests and the admission documents are updated to the new 22 held / 537 admitted split. The generated admission file is Bridge source, so Morrow Bridge Extension moves to 1.0.140 with a new `connector/release-ledger.json` seal (1.0.139 shipped in Desktop 1.0.15 and stays sealed as released). |
+| `desktop/packages/canvas-api-catalog/src/operation-admission.ts` (+ generated `connector/extension/generated/canvas-operation-admission.js`, `artifacts/canvas-api/canvas-admission-report.json`) | 12 credential routes held with reason `mints_a_credential` (listed below) | Morrow does not send a write that mints, regenerates, or returns a credential. The Bridge no longer offers these changes and the connector sends no command for them; the result redaction stays as defense in depth. The 6 credential-input writes are held the same way with reason `receives_a_credential`. Tests and the admission documents are updated to the new 28 held / 531 admitted split. The generated admission file is Bridge source, so Morrow Bridge Extension moves to 1.0.140 with a new `connector/release-ledger.json` seal (1.0.139 shipped in Desktop 1.0.15 and stays sealed as released). |
 | `desktop/scripts/test/no-borrowed-credentials.test.mjs`, `.github/workflows/ci.yml` | New CI gate | Scans every tracked UTF-8 file, line by line, for the markers in this receipt, for CDP cookie reads and `Cookie` header replay, and for Item Banks token capture. The only allowed matches are the exact existing lines, each once: the helper's expiry read and its tests, and the THE-85 sites. Any other match, including a new one inside an allowed file, fails. and fails if a removed path comes back. It does not see a marker built at run time, split across lines, or inside a binary file. |
 | `morrow-for-muse/scripts/carve.py`, `scripts/dev-suites.sh`, `scripts/test_package_shadowing.py`, `dispatch/integration_selftest.py`, `dispatch/executor.py`, `failures/catalog.json`, `DEPLOY.md`, `CHANGELOG.md`, `audit/*.md`, `moodle/session_selftest.py`, `desktop/scripts/test/ci-native-platforms.test.mjs` | References updated | They named the removed files. `carve.py` still denies `session/`, `lanes/`, and `qr-proof/`, so a restored copy cannot ship. |
 
@@ -93,6 +95,31 @@ No shipped Morrow feature calls any of these. They were generic catalog operatio
 | Application secret | `canvas_create_lti_registration_apps` | `POST /v1/accounts/{account_id}/apps` |
 
 The last three were offered for standing Edit access before this change. Administrators create developer keys and LTI registrations in Canvas itself.
+
+### Canvas writes held because they carry a typed credential (THE-87)
+
+These writes mint nothing and borrow nothing: the person types a credential that Canvas itself requires. They were going to stay admitted. An independent review (Codex, round 3b, at `2902860b`) then found that Morrow keeps copies of the typed value outside the one Canvas request, so Morrow PM decided on 2026-10-12 to hold them until Linear THE-87 fixes that, then re-admit them with an administrator category. No shipped flow uses them: Morrow Bridge for Muse only lists and launches existing external tools.
+
+| Tool | Credential it carries |
+|---|---|
+| `canvas_add_observee_with_credentials` | The student's `observee[password]`, or an `access_token` |
+| `canvas_create_user` | `pseudonym[password]` |
+| `canvas_create_user_login` | `login[password]` |
+| `canvas_edit_user_login` | `login[password]`, `login[old_password]` |
+| `canvas_create_external_tool_accounts` | LTI 1.1 `consumer_key` and `shared_secret` |
+| `canvas_create_external_tool_courses` | LTI 1.1 `consumer_key` and `shared_secret` |
+
+Where the typed value leaked (code at `2902860b`, proved with fake values against the real functions; no real credential is known to have leaked):
+
+| Surface | Where |
+|---|---|
+| Assistant tool result and operation journal | Recovery read-back assertions copy every input as `expected` (`desktop/packages/canvas-api-catalog/src/readback-plan.ts:405,1112`), which field-name redaction does not catch |
+| Operation journal, plain text | `plan_json` and `forwarded_request_json` (`desktop/packages/operation-journal/src/effect-broker.ts:796,858-860`); batch state keeps them encrypted |
+| Approval page, before and after the run | `desktop/packages/mcp-server/src/approval-server.ts:672,1238` |
+| Error text | A Canvas error that quotes the value passes through (`service-worker.js:6261`; Muse `failures/translator.py:100`) |
+| Morrow Bridge for Muse, `canvas_create_external_tool_courses` | Approval display and 0600 plan and approval files keep all three fields; receipts redact `shared_secret` but not `consumer_key` or `client_id` |
+
+The desktop admission holds all 6 with reason `receives_a_credential`. Morrow Bridge for Muse adds `canvas_create_external_tool_courses` to its never-dispatch list (`dispatch/admission_policy.json`); its catalog does not carry the other 5, so they are already refused. Follow-up: THE-87.
 
 ## Scan commands and output
 
@@ -242,9 +269,9 @@ baseline.
 | `python -m pytest -q` | 2433 passed, 1 failed, 1 skipped | 2421 passed, 2 failed, 1 skipped |
 | `bash scripts/dev-suites.sh` | 22/22 suites pass | 21/21 suites pass (`session/cdp_selftest.py` removed) |
 | `carve.py` then `install-suites.sh` | 23/23 suites pass | 23/23 suites pass |
-| Repository gates (`check-repository` job, plus `ci-native-platforms.test.mjs` and `pre-commit-hook.test.mjs`) | not run | 46/46 pass |
+| Repository gates (`check-repository` job, plus `ci-native-platforms.test.mjs` and `pre-commit-hook.test.mjs`), at `2902860b` | not run | 47/47 pass |
 | Desktop `canvas-api-catalog` vitest | not run | 108/108 pass |
-| Connector runtime: no Bridge command for any held credential route | not run | pass (12 routes, 0 commands) |
+| Connector runtime: no Bridge command for any held credential route | not run | pass (18 routes, 0 commands; the refusal echoes no typed value) |
 | Desktop browser harness `canvas-connector-browser.mjs` | not run | pass |
 | Desktop `pnpm scripts:test` | 3 fail locally (below) | 1450 pass, the same 3 fail locally |
 
