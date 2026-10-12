@@ -34,13 +34,17 @@ const BORROWED_CREDENTIAL_MARKERS = Object.freeze([
   ["browser cookie store reader", /pycookiecheat|browser_cookie3/i],
   ["Moodle mobile app web service", /moodle_mobile_app|tool_mobile/i],
   ["browser cookie capture or replay", /Network\.getAllCookies|Storage\.getCookies|Network\.getCookies|cookie_header|["']Cookie["']\s*:\s*cookie/i],
+  ["Item Banks app token capture", /capture_request_headers|requestHeaders,\s*["']authorization["']|getItem\(\s*["'](?:banks|quiz)\.build_token/i],
 ]);
 
 /**
- * Files allowed one marker, each for a reason that is not credential capture. The login helper
- * reads cookie expiry times on its private pipe for the session-expiry warning, and returns no
- * cookie name or value; the other files are its tests and the proxy check that keeps the method
- * off the proxy.
+ * Files allowed one marker. The login helper reads cookie expiry times on its private pipe for the
+ * session-expiry warning, and returns no cookie name or value; the other cookie entries are its
+ * tests and the proxy check that keeps the method off the proxy.
+ *
+ * The Item Banks entries are a known borrowed credential, not an exemption: Morrow takes the Item
+ * Banks app's own token from its requests or storage and reuses it. It stays for personal mode
+ * until Linear THE-85 replaces or removes it, and these are the only places allowed to do it.
  */
 const ALLOWED = Object.freeze({
   "browser cookie capture or replay": Object.freeze([
@@ -49,6 +53,19 @@ const ALLOWED = Object.freeze({
     "morrow-for-muse/helper/helper_selftest.py",
     "morrow-for-muse/scripts/test_install_after_use.py",
     "morrow-for-muse/transport/local_chromium_selftest.py",
+  ]),
+  "Item Banks app token capture": Object.freeze([
+    "desktop/connector/extension/src/item-bank-credential.js",
+    "desktop/connector/extension/src/item-bank-executor.js",
+    "desktop/connector/extension/src/quiz-bank-draw-executor.js",
+    "morrow-for-muse/failures/live_verify.py",
+    "morrow-for-muse/knowledge/item-banks-sdk.md",
+    "morrow-for-muse/provision/launch_driver.py",
+    "morrow-for-muse/transport/item_bank_sdk.py",
+    "morrow-for-muse/transport/item_bank_sdk_selftest.py",
+    "morrow-for-muse/transport/local_chromium.py",
+    "morrow-for-muse/transport/local_chromium_selftest.py",
+    "morrow-for-muse/transport/test_item_banks_custom_domain.py",
   ]),
 });
 
@@ -93,6 +110,8 @@ test("the scan finds each marker and a removed path, and passes ordinary credent
       '    res = cdp_call(target_id, "Network.getCookies", {"urls": [base + "/"]})\n'
       + '        headers={"Cookie": cookie_header,\n',
     "morrow-for-muse/helper/server.py": '    res = self.cdp.call(self.tab, "Network.getCookies", {"urls": [base]})\n',
+    "desktop/connector/extension/src/new-capture.js": 'const token = requestHeader(details.requestHeaders, "authorization");\n',
+    "desktop/connector/extension/src/item-bank-credential.js": 'const token = requestHeader(details.requestHeaders, "authorization");\n',
     "morrow-for-muse/session/capture.py": "pass\n",
     "ok.ts": 'const body = { grant_type: "client_credentials", client_id: config.applicationKey };\n',
   };
@@ -106,6 +125,7 @@ test("the scan finds each marker and a removed path, and passes ordinary credent
     "f.php:1 Moodle mobile app web service",
     "morrow-for-muse/transport/probe.py:1 browser cookie capture or replay",
     "morrow-for-muse/transport/probe.py:2 browser cookie capture or replay",
+    "desktop/connector/extension/src/new-capture.js:1 Item Banks app token capture",
     "morrow-for-muse/session/capture.py removed path",
   ]);
 });

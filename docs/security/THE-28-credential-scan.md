@@ -1,6 +1,10 @@
 # THE-28 credential scan receipt
 
-Result: no borrowed-credential code remains in the tracked tree.
+Result: the QR OAuth proof, the PAT probe, and the Canvas session-cookie capture are gone, and
+Morrow no longer mints Canvas access tokens. One borrowed credential remains, by decision: both
+products reuse the Item Banks app's own token for Morrow's Item Bank calls. It stays in personal
+mode until Linear THE-85 replaces or removes it, and the CI gate allows it only at the sites listed
+below.
 
 A borrowed credential is a credential that Morrow was not given for its own use. Examples:
 another app's OAuth client, a token that Morrow mints or scrapes for the user, or a session
@@ -21,7 +25,31 @@ PR #122 (merged 2026-10-11 as `34cd1ac`) removed these files:
 | `morrow-for-muse/qr-proof/qr_proof.py`, `PROOF_LOG.md`, `crop_view.png` | It took Instructure's mobile OAuth client ID and secret from `mobile_verify.json` and exchanged a Canvas mobile QR code for tokens. |
 | `morrow-for-muse/lanes/detect.py` | It scraped the Canvas settings page and the token list API to find out whether the user could mint a personal access token. |
 
-## Removed by this PR
+## Remaining borrowed credential: the Item Banks app token (THE-85)
+
+Morrow reaches Canvas Item Banks and New Quiz bank draws with a token that Canvas issued to
+Instructure's Item Banks (quiz LTI) app, not to Morrow. Morrow takes it from that app's requests or
+storage and sends it on its own Item Bank calls. There is no public Item Banks API for third parties.
+
+Morrow PM decided on 2026-10-12 to keep this in personal mode, not to turn it off by default, and not
+to remove it in THE-28. Institutional mode must not ship with it (BRIDGE-INSTITUTIONAL-PLAN §3).
+Linear THE-85, owned by Braden, tracks replacing or removing it.
+
+| Site | What it does |
+|---|---|
+| `desktop/connector/extension/src/item-bank-credential.js:128` | Reads the `Authorization` header from the Item Banks app's `/api/banks` request (`webRequest.onBeforeSendHeaders` in `service-worker.js`) |
+| `desktop/connector/extension/src/item-bank-executor.js:118` | Reads `banks.build_token` from the app's sessionStorage |
+| `desktop/connector/extension/src/quiz-bank-draw-executor.js:66` | Reads `quiz.build_token` from the New Quiz builder's storage |
+| `morrow-for-muse/transport/local_chromium.py:932` | `capture_request_headers`, the CDP primitive that records a request's headers |
+| `morrow-for-muse/transport/item_bank_sdk.py:789-834` | Captures the quiz-api `Authorization` header and sends it on later requests |
+| `morrow-for-muse/provision/launch_driver.py:396` | Captures the same header during launch |
+| `morrow-for-muse/dispatch/executor.py` (draw path), `provision/manifests/morrow_check_new_quiz.json` | Reuse `quiz.build_token` and the `banks_build_token` transient |
+| `morrow-for-muse/failures/live_verify.py:219` | Dev-only live check; reads `banks.build_token` |
+
+The CI gate's `Item Banks app token capture` marker fails on any other file that captures a request
+header or reads a build token.
+
+## Removed or held by this PR
 
 The scan below found one more borrowed-credential pattern: the rig session capture. It read the
 Canvas session cookie out of the browser through CDP, wrote it to `~/.morrow/session.json`, and with
@@ -41,7 +69,8 @@ the helper's own tab and copies no cookie, so no working personal-mode flow used
 | `morrow-for-muse/reauth/wave5_resource_selftest.py`, `reauth/session_lifecycle_selftest.py`, `scripts/test_s4_install_lane.py` | Tests for the removed code removed | They tested `reauth()`, `_complete_reauth()`, and `keepalive-canvas.sh`. |
 | `morrow-for-muse/transport/local_chromium_selftest.py` | New check | The proxy allowlist must not contain `Network.getCookies`. |
 | `morrow-for-muse/dispatch/executor.py` | `inject_cookie_header` removed; a non-string credential slot now fails closed | The rig HTTPS lane could still send a dict in `canvas.pat` as a `Cookie` header. |
-| `desktop/scripts/test/no-borrowed-credentials.test.mjs`, `.github/workflows/ci.yml` | New CI gate | Scans every tracked UTF-8 file, line by line, for the markers in this receipt and for CDP cookie reads and `Cookie` header replay (only the helper's expiry read and its tests are allowed), and fails if a removed path comes back. It does not see a marker built at run time or split across lines. |
+| `desktop/packages/canvas-api-catalog/src/operation-admission.ts` (+ generated `connector/extension/generated/canvas-operation-admission.js`, `artifacts/canvas-api/canvas-admission-report.json`) | `canvas_create_access_token` and `canvas_update_access_token` held with reason `mints_a_credential` | Creating or regenerating a Canvas access token mints a credential. Morrow never creates one. The Bridge no longer offers either change; the result redaction stays as defense in depth. Tests and the admission documents are updated to the new 12 held / 547 admitted split. The generated admission file is Bridge source, so Morrow Bridge Extension moves to 1.0.140 with a new `connector/release-ledger.json` seal (1.0.139 shipped in Desktop 1.0.15 and stays sealed as released). |
+| `desktop/scripts/test/no-borrowed-credentials.test.mjs`, `.github/workflows/ci.yml` | New CI gate | Scans every tracked UTF-8 file, line by line, for the markers in this receipt, for CDP cookie reads and `Cookie` header replay (only the helper's expiry read and its tests are allowed), and for Item Banks token capture (only the THE-85 sites are allowed), and fails if a removed path comes back. It does not see a marker built at run time, split across lines, or inside a binary file. |
 | `morrow-for-muse/scripts/carve.py`, `scripts/dev-suites.sh`, `scripts/test_package_shadowing.py`, `dispatch/integration_selftest.py`, `dispatch/executor.py`, `failures/catalog.json`, `DEPLOY.md`, `CHANGELOG.md`, `audit/*.md`, `moodle/session_selftest.py`, `desktop/scripts/test/ci-native-platforms.test.mjs` | References updated | They named the removed files. `carve.py` still denies `session/`, `lanes/`, and `qr-proof/`, so a restored copy cannot ship. |
 
 ## Scan commands and output
@@ -134,11 +163,8 @@ returns no cookie name or value. The proxy allowlist no longer contains this met
 
 `git grep -i -F 'New Access Token' -- . "${X[@]}"` hits 4 files: the Canvas API catalog description of
 `POST /v1/users/{user_id}/tokens` (2 generated copies) and Blackboard comments about OAuth token
-renewal. That Canvas route is an official API write in the user's own signed-in session. Admission
-classes it as a `session_credential` site-authority write (`operation-admission.ts`,
-`NO_READABLE_PROVIDER_EFFECT_ROUTE`), and the Bridge removes the returned token from the result
-(`withoutSessionCredentialSecrets` in `service-worker.js`). It uses the user's own Canvas
-permission, so it is not a borrowed credential.
+renewal. This PR holds that Canvas route and the token update route (`token_regenerate`) before
+dispatch with reason `mints_a_credential`, so Morrow cannot create or renew a token.
 
 The remaining references to `lanes/detect.py`, `qr-proof/`, `session/capture.py`, and
 `keepalive-canvas.sh` are removal notes (`DEPLOY.md`, `audit/`), history (`config/paths.py`,
@@ -195,7 +221,9 @@ baseline.
 | `python -m pytest -q` | 2433 passed, 1 failed, 1 skipped | 2421 passed, 2 failed, 1 skipped |
 | `bash scripts/dev-suites.sh` | 22/22 suites pass | 21/21 suites pass (`session/cdp_selftest.py` removed) |
 | `carve.py` then `install-suites.sh` | 23/23 suites pass | 23/23 suites pass |
-| Repository gates (`check-repository` job, plus `ci-native-platforms.test.mjs`) | not run | 37/37 pass |
+| Repository gates (`check-repository` job, plus `ci-native-platforms.test.mjs` and `pre-commit-hook.test.mjs`) | not run | 46/46 pass |
+| Desktop `canvas-api-catalog` vitest | not run | 108/108 pass |
+| Desktop `pnpm scripts:test` | 3 fail locally (below) | 1450 pass, the same 3 fail locally |
 
 The branch collects 11 fewer pytest tests (2424 against 2435, skipped tests included): the deleted tests for the removed code. No failure comes from the
 removal:
@@ -206,6 +234,8 @@ removal:
   `test_failure_reads_no_auth_material` assert that no opened path contains the word
   `credential`. The branch worktree directory was named `chore-the-28-credential-scan`. From a
   checkout of the same commit at a neutral path, `bin/test_morrow.py` passes 53/53.
+
+The 3 local desktop script failures (`desktop-package-provenance` payload seal, offline dependency materialization `ERR_PNPM_NO_OFFLINE_TARBALL`, `desktop-update-harness`) fail the same way on a clean `origin/main` checkout on this host, so they come from the local package store, not this change. CI runs them on clean runners.
 
 Recovery after a Canvas sign-out stays on `reauth/state_machine.py resume`. Its tests
 (`reauth/test_principal_pin.py`, `reauth/test_approve_refusals.py`, `transport/test_principal_check.py`,
