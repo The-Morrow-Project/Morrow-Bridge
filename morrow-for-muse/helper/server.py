@@ -2042,7 +2042,6 @@ _CDP_PROXY_ALLOWLIST = frozenset({
     "Network.enable",           # base-class network capture flows
     "Network.disable",
     "Network.getResponseBody",
-    "Network.getCookies",       # session/capture.py cookie jar
     "Browser.setDownloadBehavior",  # launcher attach-mode download guard
                                     # (browser-level only)
 })

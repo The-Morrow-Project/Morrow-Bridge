@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Re-auth state machine for the Lane 2 (session, no-PAT) Canvas connector.
 
-States: healthy -> expired -> reauth_pending -> healthy.
+States: healthy -> expired -> healthy. A state file from an older rig
+re-auth cycle can still read reauth_pending.
 
 Expiry detection uses the two signals live-observed on the tenant on
 2026-09-20:
@@ -14,10 +15,9 @@ On detection the machine:
   2. Quarantines in-flight ops to <morrow-home>/quarantine.jsonl
      (append-only; entries are NEVER retried blind against a dead session).
   3. Writes a plain-language notification to <morrow-home>/notify.txt.
-  4. Production recovery (the rig-only guided re-sign-in below is NOT
-     wired into production): the executor refuses every write while the
-     halt is present; the educator re-signs in through the login helper
-     (the helper's own Chromium tab, no credentials touch the agent);
+  4. Recovery: the executor refuses every write while the halt is
+     present; the educator re-signs in through the login helper (the
+     helper's own Chromium tab, no credentials touch the agent);
      quarantined ops move to awaiting_approval ONLY after the session is
      verified live AND the principal is pinned to the stored one; each
      op then needs the educator's explicit per-op approval
@@ -25,15 +25,10 @@ On detection the machine:
      ops never approved stay quarantined forever and are never retried
      blind. Rule: resume, re-approve, or discard, per op, by the
      educator's explicit word; nothing auto-resumes.
-  5. Guided re-sign-in (RIG/DRILL ONLY) = re-run capture.py: the
-     educator signs in through the login helper page; the agent never
-     sees a password. capture.py reaches the helper's browser through
-     its token-authenticated /cdp/* proxy (W4-P0-3: no TCP CDP).
-     Production never runs capture.py.
-  6. Verified resume = GET /api/v1/users/self principal from the fresh
-     capture must match the stored principal (principal pinning). On mismatch
-     the halt is refused-lifted and the situation escalates, never resumes.
-  7. Only then lifts the halt, and only after fresh per-action approval
+  5. Verified resume = GET /api/v1/users/self principal read live in the
+     helper's tab must match the pinned principal. On mismatch the halt
+     is refused-lifted and the situation escalates, never resumes.
+  6. Only then lifts the halt, and only after fresh per-action approval
      semantics are re-armed (quarantined ops replay only with explicit
      per-action approval; nothing auto-retries).
 
@@ -42,8 +37,7 @@ Usage:
   state_machine.py detect --status 302 --location 'https://school.example.edu/login'
   state_machine.py check                      # dispatch executor pre-check
   state_machine.py quarantine --op-id X --action create_page [--summary ...]
-  state_machine.py reauth                     # guided re-sign-in + verified resume
-  state_machine.py pin --first-signin         # pin the signed-in account
+  state_machine.py pin --first-signin        # pin the signed-in account
                                                # at first sign-in (keepalive
                                                # runs this; refused during a
                                                # re-auth halt)
@@ -67,8 +61,6 @@ Usage:
   state_machine.py status                    # halt + quarantine view (+ the
                                              # session-expiry horizon warning,
                                              # W4-P2-3)
-  state_machine.py selftest                   # full drill on a SIMULATED 401;
-                                              # the real session is never expired
 
 W4-P2-1: the machine is no longer drill-only. Production session-death
 detection (transport/chromium_session.py, first lc.SessionDead on a
@@ -77,11 +69,10 @@ write_notify_expired() exactly once per death, so a dead session halts
 writes, parks itself in the quarantine ledger, and notifies, instead of
 just raising a loud exception.
 
-W4-P2-5: session.json.prev exists ONLY between a re-auth start and its
-successful completion. _complete_reauth() deletes it on verified resume;
-age_out_stale_prev() deletes a .prev older than 7 days (a leftover from
-an incomplete earlier cycle), and impose_halt() sweeps it on every fresh
-death.
+W4-P2-5: nothing creates session.json.prev now; an older rig re-auth
+cycle could leave one behind, holding a captured session record.
+age_out_stale_prev() deletes a .prev older than 7 days, impose_halt()
+sweeps it on every fresh death, and a verified resume sweeps it too.
 
 All file writes are metadata only. No cookie or token values are ever
 written to the halt file, quarantine ledger, or notify text.
@@ -90,8 +81,6 @@ import hashlib
 import hmac
 import json
 import os
-import shutil
-import subprocess
 import sys
 import time
 import uuid
@@ -115,8 +104,6 @@ NOTIFY_PATH = os.path.join(STORE_DIR, "notify.txt")
 APPROVAL_PATH = os.path.join(STORE_DIR, "approval_required")
 SESSION_PATH = os.path.join(STORE_DIR, "session.json")
 SESSION_PREV = os.path.join(STORE_DIR, "session.json.prev")
-CAPTURE_PY = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "..", "session", "capture.py")
 
 HEALTHY, EXPIRED, REAUTH_PENDING = "healthy", "expired", "reauth_pending"
 
@@ -728,11 +715,11 @@ def age_out_stale_prev(max_age_days=7):
     W5-P2-1: wall-clock age is corruptible by clock jumps: a forward
     jump would make a seconds-old .prev look ancient and delete the
     pinning snapshot mid-re-auth-cycle (impose_halt sweeps on every
-    fresh death). reauth() therefore records the .prev's birth on the
+    fresh death). The rig re-auth recorded the .prev's birth on the
     monotonic (steady) clock in session.json.prev.mono; when that stamp
     says the .prev is fresh, it is kept regardless of what the wall
     clock claims. A backward jump can only make a stale .prev look
-    fresh (kept, harmless: reauth() overwrites it on the next cycle).
+    fresh (kept until its wall-clock age passes the threshold).
     """
     try:
         mtime = os.stat(SESSION_PREV).st_mtime
@@ -746,8 +733,7 @@ def age_out_stale_prev(max_age_days=7):
         # W5-P2-1: the monotonic clock resets on reboot. A negative
         # delta means the stamp was written before a reboot and is
         # meaningless now: ignore it and fall back to wall-clock age
-        # (fail-safe: an actually-fresh .prev is re-pinned by reauth()
-        # on the next cycle; an actually-stale one is deleted).
+        # (fail-safe: an actually-stale .prev is deleted).
         now_mono = time.monotonic()
         if (born_mono > 0 and now_mono >= born_mono
                 and (now_mono - born_mono
@@ -1235,8 +1221,7 @@ def verified_resume_after_manual_signin(principal_id, principal_name="",
                                         base=""):
     """Production recovery after the educator re-signs in manually.
 
-    The production flow never re-runs capture.py (rig-only). Instead:
-    the educator signs in again through the login helper's own browser
+    The educator signs in again through the login helper's own browser
     tab; the live principal is read and must match the PINNED principal
     (pinned at first sign-in, see pin_principal). Only then are
     quarantined ops re-armed as awaiting_approval (each still needs the
@@ -1487,125 +1472,6 @@ def on_expiry_detected(detection, simulated=False):
     tag = " (SIMULATED)" if simulated else ""
     print(f"expiry detected{tag}: state={EXPIRED}, write halt imposed, "
           f"notify.txt written, {len(paused_ops())} op(s) quarantined")
-
-
-def reauth():
-    """Guided re-sign-in: re-run capture.py, pin the principal, resume.
-
-    Principal pinning: the fresh capture's principal id must equal the
-    stored one. On mismatch the halt is NOT lifted and the situation
-    escalates. When the stored record has no principal (older captures),
-    the fresh capture's live-verified principal is pinned first-seen.
-    The agent never sees credentials; sign-in stays manual.
-    """
-    state = get_state()
-    if state not in (EXPIRED, REAUTH_PENDING):
-        print(f"no re-auth needed: state={state}")
-        return True
-    set_state(REAUTH_PENDING)
-
-    # Snapshot the current (dead) session record for pinning.
-    try:
-        shutil.copy2(SESSION_PATH, SESSION_PREV)
-        with open(SESSION_PREV) as f:
-            stored = json.load(f)
-    except (FileNotFoundError, ValueError) as e:
-        write_notify_escalation(f"stored session record unreadable: {e}")
-        print("escalation: stored session record unreadable")
-        return False
-    old_principal = (stored.get("canvas") or {}).get("principal") or {}
-    if old_principal.get("id") is None:
-        # The stored record never captured a principal (pre-principal
-        # capture, e.g. the live store). _complete_reauth pins the fresh
-        # capture's live-verified principal as the first-seen pin.
-        print("no stored principal: first-seen pinning will record the "
-              "fresh capture's principal")
-    # W5-P2-1: birth-stamp the pinning snapshot on the monotonic
-    # clock so a wall-clock jump cannot make age_out_stale_prev()
-    # delete it mid-cycle.
-    _write_json(SESSION_PREV_MONO, {"mono": time.monotonic()})
-
-    print("guided re-sign-in: re-running capture.py "
-          "(educator signs in through the login helper page)")
-    try:
-        proc = subprocess.run([sys.executable, CAPTURE_PY],
-                              capture_output=True, text=True, timeout=120)
-    except subprocess.TimeoutExpired:
-        # W5-P2-6: a hung capture.py takes the designed escalation path
-        # (plain-language notify, state stays reauth_pending), not a
-        # traceback out of reauth(). subprocess.run kills the child
-        # before raising TimeoutExpired.
-        write_notify_escalation(
-            "capture.py hung past the 120s timeout and was killed; "
-            "state stays reauth_pending")
-        print("escalation: capture.py timed out after 120s (killed), "
-              "state stays reauth_pending")
-        return False
-    if proc.returncode != 0:
-        write_notify_escalation(
-            f"capture.py failed (exit {proc.returncode}); "
-            f"{(proc.stderr or proc.stdout)[-300:]}")
-        print("escalation: capture failed, state stays reauth_pending")
-        return False
-
-    with open(SESSION_PATH) as f:
-        new_principal = json.load(f)["canvas"]["principal"]
-    return _complete_reauth(old_principal, new_principal)
-
-
-def _complete_reauth(old_principal, new_principal):
-    """W4-P2-5: the testable completion step of re-auth.
-
-    Principal pinning: the fresh principal id must equal the stored
-    one. On mismatch the halt is NOT lifted, the situation escalates,
-    and session.json.prev is RETAINED (recovery did not complete). On
-    match: re-arm per-op approval, lift the halt, and ONLY THEN delete
-    session.json.prev (it has served its pinning purpose).
-    First-seen pinning: when the stored record has no principal (older
-    captures), the fresh capture's live-verified principal is recorded
-    as the pin instead of failing; there is nothing to be swapped
-    against.
-    Returns True on verified resume, False on mismatch.
-    """
-    old_id = old_principal.get("id")
-    new_id = new_principal.get("id")
-    if old_id is None and new_id is not None:
-        # First-seen pinning (see reauth()): the stored record never
-        # captured a principal. The fresh principal was verified live by
-        # capture.py's in-tab probe; record it as the pin and proceed.
-        print(f"first-seen principal pin: id={new_id} "
-              f"name={new_principal.get('name')!r}")
-    elif new_id != old_id:
-        write_notify_escalation(
-            f"principal mismatch: expected id {old_id}, got id {new_id}")
-        print("REFUSED: principal mismatch, halt stays, escalated")
-        return False
-
-    # Verified resume: lift the halt, re-arm per-action approval.
-    moved = mark_ops_awaiting_approval()
-    _write_json(APPROVAL_PATH,
-                {"re_armed_at": _now(),
-                 "policy": "fresh per-action approval required before any "
-                           "quarantined op replays; nothing auto-retries",
-                 "quarantined_ops": len(quarantined_ops())})
-    # W4-P2-5: the superseded session record has served its
-    # principal-pinning purpose; wipe it now that the fresh session is
-    # verified. Retention rule: session.json.prev exists ONLY between a
-    # re-auth start and its successful completion, then it is deleted.
-    try:
-        os.remove(SESSION_PREV)
-    except FileNotFoundError:
-        pass
-    # W5-P2-1: the monotonic birth stamp goes with it.
-    try:
-        os.remove(SESSION_PREV_MONO)
-    except OSError:
-        pass
-    lift_halt()
-    write_notify_resumed(paused_ops())
-    print(f"verified resume: principal id={new_principal.get('id')} pinned, "
-          f"halt lifted, {moved} op(s) awaiting fresh per-action approval")
-    return True
 
 
 # -------------------------------------------------------------------- CLI
@@ -1875,92 +1741,6 @@ def cmd_status():
     return True
 
 
-def cmd_selftest():
-    """Full drill on a SIMULATED 401. The real session is never expired.
-
-    Snapshots pre-existing state files, runs detect -> halt -> quarantine ->
-    notify -> reauth (real capture.py against the live session, principal
-    pinned), then restores everything to the pre-test state.
-    """
-    paths = [STATE_PATH, HALT_PATH, QUAR_PATH, NOTIFY_PATH, APPROVAL_PATH,
-             SESSION_PREV, SESSION_PATH]
-    backups = {}
-    for p in paths:
-        if os.path.exists(p):
-            bak = p + ".selftest-bak"
-            shutil.copy2(p, bak)
-            backups[p] = bak
-    results = []
-
-    def check(name, cond, detail=""):
-        results.append((name, bool(cond), detail))
-        print(f"{'PASS' if cond else 'FAIL'} {name} {detail}")
-
-    try:
-        # 1. detection of the live-observed 401 shape
-        verdict, detection = classify_response(
-            401, '{"status":"unauthenticated","errors":[{"message":"user authorization required"}]}')
-        check("detect_401_unauthenticated", verdict == "expired", str(detection))
-
-        # 2. halt + notify
-        on_expiry_detected(detection, simulated=True)
-        allowed, reason = check_write_allowed()
-        check("halt_imposed", not allowed, reason)
-        check("state_expired", get_state() == EXPIRED, get_state())
-        check("notify_written", os.path.exists(NOTIFY_PATH)
-              and "expired" in open(NOTIFY_PATH).read().lower())
-
-        # 3. quarantine two in-flight ops (metadata only, never retried blind).
-        # The ledger may already hold entries from earlier drills: assert
-        # the two new op_ids are present and quarantined (subset check),
-        # never an exact total.
-        quarantine_op("selftest-op-1", "create_page", "test course page draft")
-        quarantine_op("selftest-op-2", "create_assignment", "test assignment draft")
-        ops = quarantined_ops()
-        by_id = {o.get("op_id"): o for o in ops}
-        check("quarantine_ledger",
-              all(by_id.get(oid, {}).get("status") == "quarantined"
-                  for oid in ("selftest-op-1", "selftest-op-2")),
-              f"{len(ops)} entries total")
-
-        # 4. reauth against the live session (capture re-runs; nothing logs out)
-        ok = reauth()
-        check("reauth_flow", ok)
-        allowed, _ = check_write_allowed()
-        check("halt_lifted", allowed and get_state() == HEALTHY,
-              f"state={get_state()}")
-        ops = quarantined_ops()
-        by_id = {o.get("op_id"): o for o in ops}
-        check("approval_rearmed",
-              all(by_id.get(oid, {}).get("status") == "awaiting_approval"
-                  for oid in ("selftest-op-1", "selftest-op-2"))
-              and os.path.exists(APPROVAL_PATH),
-              f"{len(ops)} ops total in ledger")
-
-        # 5. 302-to-login signal also classified
-        verdict2, det2 = classify_response(
-            302, "", "https://school.example.edu/login")
-        check("detect_302_to_login", verdict2 == "expired", str(det2))
-
-        # 6. non-expiry responses do NOT trip the machine
-        verdict3, _ = classify_response(403, '{"status":"forbidden"}')
-        verdict4, _ = classify_response(200, '{"id":28206}')
-        check("no_false_positive_403_200",
-              verdict3 == "unknown" and verdict4 == "unknown")
-    finally:
-        for p, bak in backups.items():
-            shutil.copy2(bak, p)
-            os.remove(bak)
-        for p in paths:
-            if p not in backups and os.path.exists(p):
-                os.remove(p)
-
-    failed = [n for n, ok_, _ in results if not ok_]
-    print(f"selftest: {len(results) - len(failed)}/{len(results)} passed"
-          + (f"; FAILED: {failed}" if failed else "; state restored"))
-    return not failed
-
-
 def main():
     if len(sys.argv) < 2:
         print(__doc__.split("Usage:")[1].split('"""')[0] if '"""' in __doc__ else "see module docstring")
@@ -1972,8 +1752,6 @@ def main():
         sys.exit(0 if cmd_check() else 1)
     elif cmd == "quarantine":
         cmd_quarantine()
-    elif cmd == "reauth":
-        sys.exit(0 if reauth() else 1)
     elif cmd == "approve":
         sys.exit(0 if cmd_approve() else 1)
     elif cmd == "notify":
@@ -1984,8 +1762,6 @@ def main():
         sys.exit(0 if cmd_pin() else 1)
     elif cmd == "status":
         sys.exit(0 if cmd_status() else 1)
-    elif cmd == "selftest":
-        sys.exit(0 if cmd_selftest() else 1)
     else:
         print(f"unknown command: {cmd}")
         sys.exit(2)

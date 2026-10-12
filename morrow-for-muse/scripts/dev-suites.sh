@@ -31,7 +31,6 @@ moodle/session_selftest.py
 provision/launch_driver_selftest.py
 provision/provision_selftest.py
 reauth/wave5_resource_selftest.py
-session/cdp_selftest.py
 transport/browser_backend_selftest.py
 transport/chromium_memory_selftest.py
 transport/item_bank_sdk_selftest.py

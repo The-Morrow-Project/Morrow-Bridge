@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22.23.2
-      - run: node --test desktop/scripts/test/no-em-dash.test.mjs desktop/scripts/test/product-claims.test.mjs desktop/scripts/test/repository-policy.test.mjs desktop/scripts/test/ci-path-filters.test.mjs
+      - run: node --test desktop/scripts/test/no-em-dash.test.mjs desktop/scripts/test/product-claims.test.mjs desktop/scripts/test/repository-policy.test.mjs desktop/scripts/test/no-borrowed-credentials.test.mjs desktop/scripts/test/ci-path-filters.test.mjs
 
   check-desktop:
     needs: changes

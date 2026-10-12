@@ -59,7 +59,7 @@ Two backends (--backend):
            ~/.morrow/session.json. This is the RIG/PROOF lane: it exists so
            the proof battery can exercise the API contract directly. The
            installed product does not ship this lane and never holds cookie
-           values (see session/capture.py and transport/README.md).
+           values (see transport/README.md).
 
 Session contract (~/.morrow/session.json, mode 0600) [RIG LANE ONLY]:
 

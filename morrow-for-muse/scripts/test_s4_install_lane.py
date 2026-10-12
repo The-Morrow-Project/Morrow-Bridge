@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sweep-4 muse-install lane: installer and rig-script regressions.
+"""Sweep-4 muse-install lane: installer regressions.
 
 Failure modes this suite pins down (written before the fix):
   F5. install.sh normalized or deduped a PRE-EXISTING keepalive cron
@@ -22,13 +22,8 @@ Failure modes this suite pins down (written before the fix):
   F9. _build_backup_manifest piped find into xargs sha256sum without
       -print0/-0, so tree filenames with whitespace broke the manifest
       and failed the upgrade. The python3 builder handles them.
-  F12. bin/keepalive-canvas.sh only handled the 401 expiry signal and
-      matched a 100-char body head, missing the documented 302-to-login
-      signal (fetch follows the redirect, so it surfaces as the login
-      page URL). It now checks the full parsed body and the landing URL.
 
-End to end: the real install.sh from a carved tree (F5-F9) and the real
-keepalive-canvas.sh against stub CDP/state-machine modules (F12), in
+End to end: the real install.sh from a carved tree (F5-F9), in
 scratch under .selftest-work/ and dist/ (never /tmp). The F5 runs fail
 fast at the step-8 secrets gate (a planted content-pattern line in
 helper/env, which the gate still checks). The install-record and
@@ -52,7 +47,6 @@ sys.path.insert(0, HERE)
 
 import carve  # noqa: E402
 
-CANVAS_BASE_PAGE = "https://school.example.edu"
 # A planted step-8 failure: session material the gate's content rules
 # still check in helper/env (only the tenant rule skips that file).
 PLANTED_SESSION_LINE = "canvas_session=abcdefghijklmnopqr"
@@ -200,108 +194,6 @@ def test_exported_tenant_reaches_tenant_probe_after_selftests(carved_base,
     assert "ok: 23/23 selftest suites pass" in text, text[-6000:]
     assert "INSTALL FAIL [tenant]" in text, text[-3000:]
     assert "INSTALL FAIL [selftest]" not in text, text[-6000:]
-
-
-# ------------------------------------------------------- F12: canvas rig
-
-STUB_CDP = """import json, os
-def tab_fetch(base, path, want_url=False):
-    with open(os.environ["CANVAS_CANNED"]) as fh:
-        canned = json.load(fh)
-    if "error" in canned:
-        raise RuntimeError(canned["error"])
-    if want_url:
-        return canned["status"], canned["body"], canned.get("url", "")
-    return canned["status"], canned["body"]
-"""
-
-STUB_STATE_MACHINE = """import os, sys
-with open(os.environ["CANVAS_SM_CALLS"], "a") as fh:
-    fh.write(" ".join(sys.argv[1:]) + "\\n")
-print("classify: stubbed")
-"""
-
-
-def _canvas_run(tmp_path, canned):
-    """Run the REAL keepalive-canvas.sh against stub cdp + state machine
-    modules planted in a scratch tree shaped like a deploy dir."""
-    root = tmp_path / "canvas"
-    for part in ("bin", "session", "reauth", "logs", "home"):
-        (root / part).mkdir(parents=True)
-    shutil.copy2(os.path.join(TREE, "bin", "keepalive-canvas.sh"),
-                 str(root / "bin" / "keepalive-canvas.sh"))
-    (root / "session" / "cdp.py").write_text(STUB_CDP)
-    (root / "reauth" / "state_machine.py").write_text(STUB_STATE_MACHINE)
-    (root / "home" / "session.json").write_text(json.dumps(
-        {"canvas": {"base": CANVAS_BASE_PAGE}}))
-    canned_path = root / "canned.json"
-    canned_path.write_text(json.dumps(canned))
-    calls_path = root / "sm-calls.txt"
-    env = dict(os.environ, MORROW_HOME=str(root / "home"),
-               CANVAS_CANNED=str(canned_path),
-               CANVAS_SM_CALLS=str(calls_path))
-    proc = subprocess.run(["bash", str(root / "bin" / "keepalive-canvas.sh")],
-                          cwd=str(root), env=env,
-                          capture_output=True, text=True, timeout=120)
-    try:
-        calls = calls_path.read_text()
-    except OSError:
-        calls = ""
-    try:
-        log = (root / "logs" / "keepalive-canvas.log").read_text()
-    except OSError:
-        log = ""
-    return proc.returncode, calls, log
-
-
-def test_canvas_401_hands_to_the_state_machine(tmp_path):
-    rc, calls, log = _canvas_run(
-        tmp_path, {"status": 401,
-                   "body": '{"status":"unauthenticated","x":1}',
-                   "url": CANVAS_BASE_PAGE + "/api/v1/users/self/profile"})
-    assert rc == 1
-    assert "detect --status 401" in calls
-    assert "EXPIRY 401" in log
-
-
-def test_canvas_200_clean_exits_zero_without_handoff(tmp_path):
-    rc, calls, log = _canvas_run(
-        tmp_path, {"status": 200, "body": '{"id":7,"name":"Edu"}',
-                   "url": CANVAS_BASE_PAGE + "/api/v1/users/self/profile"})
-    assert rc == 0, log
-    assert calls == ""
-
-
-def test_canvas_unauthenticated_body_buried_deep_is_expiry(tmp_path):
-    # The marker sits past the old 100-char head and pretty-printed:
-    # the old substring missed it and exited 0.
-    body = '{"data":"%s","status": "unauthenticated"}' % ("x" * 150)
-    assert body.index("unauthenticated") > 100
-    rc, calls, log = _canvas_run(
-        tmp_path, {"status": 200, "body": body,
-                   "url": CANVAS_BASE_PAGE + "/api/v1/users/self/profile"})
-    assert rc == 1, log
-    assert "detect --status 200" in calls
-    assert '{"status":"unauthenticated"}' in calls
-
-
-def test_canvas_login_landing_reports_the_302_signal(tmp_path):
-    # fetch followed the redirect: status 200, but the landing URL is
-    # the login page. The old script saw a clean 200 and exited 0.
-    rc, calls, log = _canvas_run(
-        tmp_path, {"status": 200, "body": "<html>sign in</html>",
-                   "url": CANVAS_BASE_PAGE + "/login"})
-    assert rc == 1, log
-    assert "detect --status 302" in calls
-    assert "--location %s/login" % CANVAS_BASE_PAGE in calls
-    assert "302-to-/login" in log
-
-
-def test_canvas_probe_error_never_trips_expiry(tmp_path):
-    rc, calls, log = _canvas_run(tmp_path, {"error": "CDP unreachable"})
-    assert rc == 2
-    assert calls == ""
-    assert "ERROR probe failed" in log
 
 
 # --------------------------------- F6+F7+F9: upgrade backup and retention

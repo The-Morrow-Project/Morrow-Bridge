@@ -532,14 +532,12 @@ def _t_proxy_generic_call_methods_allowlisted():
                      "new_tab", "tab_session", "poll_session_events"):
             assert ("def %s(" % name) in inspect.getsource(lc.ProxyCDP), \
                 "ProxyCDP must shadow %s (dedicated route)" % name
+        # Cookie values must never leave the helper: its own expiry check
+        # reads Network.getCookies on the private pipe, not the proxy.
+        assert "Network.getCookies" not in allowed, \
+            "the proxy allowlist must not expose Network.getCookies"
         via_generic = set()
-        sources = ["local_chromium.py", "item_bank_sdk.py",
-                   os.path.join("..", "session", "cdp.py")]
-        # The rig-only header capture is left out of the release
-        # (scripts/carve.py DEV_ONLY), where this suite also ships.
-        capture = os.path.join("..", "session", "capture.py")
-        if os.path.exists(os.path.join(HERE, capture)):
-            sources.append(capture)
+        sources = ["local_chromium.py", "item_bank_sdk.py"]
         for rel in sources:
             text = open(os.path.join(HERE, rel)).read()
             via_generic |= set(re.findall(

@@ -79,8 +79,10 @@ DEV_ONLY = (
     "scripts/moodle-write-readback-e2e.py",
     "scripts/moodle-capability-probe-e2e.py",
     "scripts/moodle-adapter-loader-e2e.py",
-    # rig-only session capture; production never runs it (SKILL.md)
-    "session/capture.py",
+    # The rig-only Canvas session capture (cookie read and raw replay)
+    # was removed. The prefix stays denied so a restored copy does not
+    # ship.
+    "session/",
     # the 2026-09-20 VM deployment record and its userspace scheduler
     # (no cron on that VM); the product's keepalive is helper/keepalive.sh,
     # supervised by cron or, without cron, by helper/supervisor.py's
@@ -112,7 +114,7 @@ DEV_ONLY = (
     "dispatch/wave5_injection_selftest.py",
     "dispatch/wave6_crypto_selftest.py",
     "helper/educator_surface_selftest.py",
-    "reauth/wave5_resource_selftest.py", "session/cdp_selftest.py",
+    "reauth/wave5_resource_selftest.py",
     "transport/chromium_memory_selftest.py",
     "transport/local_chromium_selftest.py",
     "transport/wave5_injection_selftest.py",
