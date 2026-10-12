@@ -43,7 +43,7 @@ def test_pack_names_the_tree_version():
 
 
 def test_skill_names_the_tree_version():
-    stated = re.findall(r"Morrow for Muse connector, v(%s)" % _VER,
+    stated = re.findall(r"Morrow Bridge for Muse connector, v(%s)" % _VER,
                         _read("SKILL.md"))
     assert stated == [_version()]
 

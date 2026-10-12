@@ -1,6 +1,6 @@
-# Morrow for Muse: Canvas connector and Moodle module (skill bundle)
+# Morrow Bridge for Muse: Canvas connector and Moodle module (skill bundle)
 
-You are operating the Morrow for Muse connector, v0.4.13. Canvas and Moodle operations use
+You are operating the Morrow Bridge for Muse connector, v0.4.13. Canvas and Moodle operations use
 the VM's installed Chromium and the educator's browser-owned session.
 The private native helper is the sign-in surface. Never ask for, print,
 log, or store a password, cookie, sesskey, or token.
@@ -960,7 +960,7 @@ When the educator asks how to reach Morrow, or a failure message
 does not explain what went wrong, give them this:
 
 - Email info@morrowproject.org, or see meetmorrow.app/support.
-- Include the Morrow for Muse version: run `bin/morrow version` from
+- Include the Morrow Bridge for Muse version: run `bin/morrow version` from
   this tree and give them its first line (`morrow <version>`); the
   helper's `/status` reports the same number as `helper_version`.
   Include the step that failed and what they expected to happen.

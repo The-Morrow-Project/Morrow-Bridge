@@ -10,10 +10,10 @@ The [Security page](https://meetmorrow.app/security) says how soon we answer, wh
 
 ## Which versions get fixes
 
-Morrow Bridge for Mac and Windows and Morrow for Muse each have their own releases. A fix ships in a new release of the product it affects. A published release never changes, so install the latest release to get a fix:
+Morrow Bridge for Mac and Windows and Morrow Bridge for Muse each have their own releases. A fix ships in a new release of the product it affects. A published release never changes, so install the latest release to get a fix:
 
 - Morrow Bridge for Mac and Windows: download the latest version from [meetmorrow.app/download](https://meetmorrow.app/download) and install it over the old one.
-- Morrow for Muse: ask Muse to set it up again from [meetmorrow.app/morrow-for-muse](https://meetmorrow.app/morrow-for-muse).
+- Morrow Bridge for Muse: ask Muse to set it up again from [meetmorrow.app/morrow-for-muse](https://meetmorrow.app/morrow-for-muse).
 
 ## Help with something else
 

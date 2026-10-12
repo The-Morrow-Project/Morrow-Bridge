@@ -1,4 +1,4 @@
-# Morrow for Muse: Deployment Record
+# Morrow Bridge for Muse: Deployment Record
 
 **Date:** 2026-09-20
 **Deployed by:** Hermes (subagent)
@@ -6,7 +6,7 @@
 
 ## What was deployed
 
-Morrow for Muse, the no-PAT Canvas/Moodle automation product, deployed as a
+Morrow Bridge for Muse, the no-PAT Canvas/Moodle automation product, deployed as a
 clean product-only tree. This is separate from Claude's desktop MCP version.
 
 **Removal note:** The PAT lane probe (`lanes/detect.py`) and the QR OAuth
