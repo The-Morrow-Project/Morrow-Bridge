@@ -108,7 +108,7 @@ module.exports = {
   artifactBuildCompleted: (event) => finalizeSignedDmg(event, { signedRelease }),
   afterPack: verifyPayloadAndAdHocSign,
   appId: "app.meetmorrow.installer",
-  productName: "Morrow Desktop",
+  productName: "Morrow Bridge",
   executableName: "Morrow",
   copyright: "Copyright © 2026 Braden Riggins",
   artifactName: "Morrow-${version}-${os}-${arch}.${ext}",
@@ -142,7 +142,7 @@ module.exports = {
   mac,
   dmg: {
     sign: signedRelease,
-    title: "Morrow Desktop",
+    title: "Morrow Bridge",
     background: "assets/dmg-background.png",
     icon: "assets/morrow.icns",
     iconSize: 128,

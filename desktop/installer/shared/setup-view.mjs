@@ -607,7 +607,7 @@ const UNINSTALL_CLAUDE_STEP = "Also remove Morrow in Claude Desktop under Settin
 const UNINSTALL_STEPS = Object.freeze({
   move_to_trash: "Then quit Morrow and move it to the Trash.",
   // Windows 11 and Windows 10 name the Settings page and its buttons differently.
-  windows_settings_apps: "Then quit Morrow and open Settings, then Apps. On Windows 11, select Installed apps, find Morrow, select More, then Uninstall. On Windows 10, select Apps & features, select Morrow, then Uninstall.",
+  windows_settings_apps: "Then quit Morrow and open Settings, then Apps. On Windows 11, select Installed apps, find Morrow Bridge, select More, then Uninstall. On Windows 10, select Apps & features, select Morrow Bridge, then Uninstall.",
   unknown: "Then quit Morrow and remove it the way this computer removes an application."
 });
 
