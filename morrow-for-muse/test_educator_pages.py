@@ -131,7 +131,7 @@ def test_the_educator_hears_who_else_can_read_course_traffic(rel):
     assert "check them before you connect" in text, rel
 
 
-SUPPORT_EMAIL = "hello@meetmorrow.app"
+SUPPORT_EMAIL = "info@morrowproject.org"
 SUPPORT_PAGE = "meetmorrow.app/support"
 
 

@@ -959,7 +959,7 @@ Honest limitations (not defects, but know them):
 When the educator asks how to reach Morrow, or a failure message
 does not explain what went wrong, give them this:
 
-- Email hello@meetmorrow.app, or see meetmorrow.app/support.
+- Email info@morrowproject.org, or see meetmorrow.app/support.
 - Include the Morrow for Muse version: run `bin/morrow version` from
   this tree and give them its first line (`morrow <version>`); the
   helper's `/status` reports the same number as `helper_version`.
