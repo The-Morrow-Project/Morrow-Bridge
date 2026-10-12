@@ -218,3 +218,6 @@ Recovery after a Canvas sign-out stays on `reauth/state_machine.py resume`. Its 
 - A rig host that ran `capture.py` before this change can still hold a captured cookie in
   `~/.morrow/session.json`. The operator of that host should delete the `canvas.cookies` entry.
   `session.json.prev` copies older than 7 days are swept automatically.
+- `desktop/packages/mcp-server/src/meridian-runtime-adapter.ts` can pass `CANVAS_SESSION_PATH` to
+  the private Meridian runtime. That file's format is defined outside this repository, so this scan
+  cannot classify it.
