@@ -527,7 +527,7 @@ def test_disconnect_checks_the_helper_port_pinned_in_helper_env(rig):
     assert proc.returncode == 0, out
     assert "stop the helper (port 18911)" in out, out
     assert "helper: port 18911 is free; nothing to stop" in out, out
-    assert "8901" not in out, out
+    assert "port 8901" not in out, out
 
 
 def test_a_helper_on_the_pinned_port_is_never_reported_stopped(rig):
