@@ -341,7 +341,7 @@ function main() {
     generatedAt: new Date().toISOString(),
     evidenceRoot: relative(root, outputRoot),
     scope: {
-      repository: "bradenriggins/morrow",
+      repository: "The-Morrow-Project/Morrow-Bridge",
     localSyntheticOnly: true,
     observedRegressionsOnly: true,
       externalReceiptsRemainSeparate: true,

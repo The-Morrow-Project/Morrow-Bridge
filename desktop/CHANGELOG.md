@@ -1,6 +1,6 @@
 # Changelog
 
-Release notes for Morrow Desktop. Tags use the form `desktop/vX.Y.Z` (see [docs/versioning.md](../docs/versioning.md)). Published installers are on [GitHub Releases](https://github.com/bradenriggins/morrow/releases). Releases before 1.0.5 have no entry here.
+Release notes for Morrow Desktop. Tags use the form `desktop/vX.Y.Z` (see [docs/versioning.md](../docs/versioning.md)). Published installers are on [GitHub Releases](https://github.com/The-Morrow-Project/Morrow-Bridge/releases). Releases before 1.0.5 have no entry here.
 
 ## 1.0.15 (2026-10-11)
 

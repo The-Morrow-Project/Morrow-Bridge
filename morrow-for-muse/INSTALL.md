@@ -60,8 +60,8 @@ Native Moodle helper onboarding still needs release qualification.
 Download the versioned package and its checksums from the GitHub release. Run these commands in an empty download folder. Verify the package before you unzip it.
 
 ```
-curl -fL -o morrow-muse-connector-0.4.13.zip https://github.com/bradenriggins/morrow/releases/download/muse/v0.4.13/morrow-muse-connector-0.4.13.zip
-curl -fL -o SHA256SUMS https://github.com/bradenriggins/morrow/releases/download/muse/v0.4.13/SHA256SUMS
+curl -fL -o morrow-muse-connector-0.4.13.zip https://github.com/The-Morrow-Project/Morrow-Bridge/releases/download/muse/v0.4.13/morrow-muse-connector-0.4.13.zip
+curl -fL -o SHA256SUMS https://github.com/The-Morrow-Project/Morrow-Bridge/releases/download/muse/v0.4.13/SHA256SUMS
 sha256sum --check SHA256SUMS
 ```
 

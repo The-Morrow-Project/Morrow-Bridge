@@ -37,7 +37,7 @@ test("no signing secrets reports not configured and names what is missing", () =
 test("a complete configuration is ready, and publishes to the feed the app reads", () => {
   const mac = signedReleasePreflight({ target: "darwin-arm64", version: "1.0.4", env: MAC_READY });
   assert.equal(mac.status, "ready");
-  assert.deepEqual(mac.updateFeed, { provider: "github", owner: "bradenriggins", repo: "morrow-downloads", channel: "latest", metadata: "latest-mac.yml" });
+  assert.deepEqual(mac.updateFeed, { provider: "github", owner: "The-Morrow-Project", repo: "morrow-downloads", channel: "latest", metadata: "latest-mac.yml" });
   const windows = signedReleasePreflight({ target: "win32-x64", version: "1.0.4", env: WIN_READY });
   assert.equal(windows.status, "ready");
   assert.equal(windows.updateFeed.metadata, "latest.yml");

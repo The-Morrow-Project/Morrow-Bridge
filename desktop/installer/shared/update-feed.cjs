@@ -3,7 +3,7 @@
 const UPDATE_FEED = Object.freeze({
   id: "morrow-github-stable",
   provider: "github",
-  owner: "bradenriggins",
+  owner: "The-Morrow-Project",
   repo: "morrow-downloads",
   channel: "latest"
 });

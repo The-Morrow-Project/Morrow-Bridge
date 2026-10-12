@@ -2,9 +2,11 @@
 
 This guide defines the update boundary for the packaged Morrow Desktop app. It
 does not publish a release. The fixed future provider is GitHub repository
-`bradenriggins/morrow-downloads`, channel `latest`, with feed ID
+`The-Morrow-Project/morrow-downloads`, channel `latest`, with feed ID
 `morrow-github-stable`. The repository has no signed public release yet, so the
 controller must stay disabled until the release owner provides one.
+
+Never recreate repos named `bradenriggins/morrow` or `bradenriggins/morrow-downloads`, because that would break the redirect that old installs rely on.
 
 `shared/updates.cjs` is an Electron-independent controller. It accepts no
 renderer data. `createUpdateController` opens no file of its own. It never reads
@@ -252,7 +254,7 @@ step.
 Before enabling policy in a released desktop build, the release owner must
 provide all of these inputs:
 
-- A public GitHub release in `bradenriggins/morrow-downloads`, with the fixed
+- A public GitHub release in `The-Morrow-Project/morrow-downloads`, with the fixed
   `morrow-github-stable` identity for the stable channel.
 - Signed and notarized macOS artifacts, and signed Windows artifacts whose
   publisher matches the updater configuration.
