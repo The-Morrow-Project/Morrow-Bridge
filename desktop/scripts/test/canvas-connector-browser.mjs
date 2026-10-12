@@ -2013,7 +2013,7 @@ try {
     .map((option) => option.id)
     .sort();
   assert.deepEqual(publishedCanvasEditActions, expectedCanvasEditActions);
-  assert.equal(expectedCanvasEditActions.length, 258);
+  assert.equal(expectedCanvasEditActions.length, 254);
   // A bound write with no exact readback is offered for approval one change at a time.
   const nonexactCanvasActions = canvasWriteOperations
     .filter((operation) => {
@@ -2024,7 +2024,7 @@ try {
     })
     .map((operation) => `action:canvas:${operation.toolName}`)
     .sort();
-  assert.equal(nonexactCanvasActions.length, 205);
+  assert.equal(nonexactCanvasActions.length, 197);
   const expectedCanvasReviewActions = [...new Set([
     ...[...reviewOnlyAdmittedCanvasWrites].map((toolName) => `action:canvas:${toolName}`),
     ...nonexactCanvasActions,

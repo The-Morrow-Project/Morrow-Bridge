@@ -20,6 +20,22 @@ function catalogFixture(): { directory: string; path: string } {
   return { directory, path };
 }
 
+// Every Canvas write that mints, regenerates, or returns a credential. Morrow holds each one.
+const MINTS_A_CREDENTIAL = [
+  "canvas_create_access_token",
+  "canvas_update_access_token",
+  "canvas_create_jwt",
+  "canvas_refresh_jwt",
+  "canvas_deprecated_create_instaccess_token",
+  "canvas_get_pandata_events_jwt_token_and_its_expiration_date",
+  "canvas_start_kaltura_session",
+  "canvas_create_observer_pairing_code",
+  "canvas_regenerate_developer_key_secret",
+  "canvas_create_developer_key",
+  "canvas_create_lti_registration_lti_registrations",
+  "canvas_create_lti_registration_apps",
+] as const;
+
 describe("Canvas API catalog", () => {
   it("loads an ordinary catalog through the exact public catalog reader", () => {
     const { path } = catalogFixture();
@@ -613,8 +629,8 @@ describe("Canvas API catalog", () => {
     // Bridge follows one hop and refuses anything that leaves the Canvas origin,
     // so they are published like every other bound read.
     const redirectReads = catalog.operations.filter((operation) => canvasRedirectRead(operation));
-    expect(held).toHaveLength(12);
-    expect(admittedWithoutExactReadback).toHaveLength(204);
+    expect(held).toHaveLength(22);
+    expect(admittedWithoutExactReadback).toHaveLength(197);
     expect(siteReads).toHaveLength(355);
     // Every read is bound: to the selected course, or to the connected Canvas site as the signed-in person.
     expect(catalog.operations.filter((operation) => operation.readOnly
@@ -876,6 +892,10 @@ describe("Canvas API catalog", () => {
         expect(admission.write, name).toEqual({ state: "held", reason: "multi_step_upload_requires_reviewed_transfer" });
         continue;
       }
+      if (MINTS_A_CREDENTIAL.includes(name)) {
+        expect(admission.write, name).toEqual({ state: "held", reason: "mints_a_credential" });
+        continue;
+      }
       expect(admission.write, name).toEqual({ state: "admitted" });
       const readback = canvasReadbackAssessment(catalog.operations, operation);
       expect(tool?.capability?.behavior.supportsReadback, name).toBe(readback.state === "structurally_exact");
@@ -911,8 +931,8 @@ describe("Canvas API catalog", () => {
 
     const admitted = catalog.operations.filter((operation) => !operation.readOnly
       && canvasOperationAdmission(operation).write.state === "admitted");
-    expect(admitted).toHaveLength(547);
-    expect(admitted.filter((operation) => accountRoute(operation.path))).toHaveLength(115);
+    expect(admitted).toHaveLength(537);
+    expect(admitted.filter((operation) => accountRoute(operation.path))).toHaveLength(111);
   });
 
   it("keeps the single-nickname read bound to one course and produces no other course target kind", () => {
@@ -962,11 +982,11 @@ describe("Canvas API catalog", () => {
     }
 
     expect(Object.fromEntries([...byReason].map(([reason, names]) => [reason, names.length]))).toEqual({
-      mints_a_credential: 2,
+      mints_a_credential: 12,
       multi_step_upload_requires_reviewed_transfer: 10,
     });
     expect([...byReason.keys()].sort()).toEqual([...closedSet]);
-    expect(byReason.get("mints_a_credential")).toEqual(["canvas_create_access_token", "canvas_update_access_token"]);
+    expect(byReason.get("mints_a_credential")).toEqual([...MINTS_A_CREDENTIAL].sort());
     expect(Object.fromEntries([...bySiteClass].map(([siteClass, names]) => [siteClass, names.length]))).toEqual({
       account: 116,
       learner_record: 34,
@@ -1044,7 +1064,7 @@ describe("Canvas API catalog", () => {
 
     // The admitted set is pinned here as well. Any change needs a reviewed admission reason.
     expect(catalog.operations.filter((operation) => !operation.readOnly
-      && canvasOperationAdmission(operation).write.state === "admitted")).toHaveLength(547);
+      && canvasOperationAdmission(operation).write.state === "admitted")).toHaveLength(537);
   });
 
   // Generic Canvas upload pre-flights cannot carry the remaining transfer steps. The Rubric CSV
@@ -1546,11 +1566,11 @@ describe("Canvas API catalog", () => {
   it("derives structural readback metadata from the shared planner", () => {
     const admittedWrites = catalog.operations.filter((operation) => !operation.readOnly && canvasOperationAdmission(operation).write.state === "admitted");
     const assessments = admittedWrites.map((operation) => canvasReadbackAssessment(catalog.operations, operation));
-    expect(assessments.filter((assessment) => assessment.state === "unavailable")).toHaveLength(169);
+    expect(assessments.filter((assessment) => assessment.state === "unavailable")).toHaveLength(162);
     expect(assessments.filter((assessment) => assessment.state === "blocked")).toHaveLength(24);
     expect(assessments.filter((assessment) => assessment.state === "unconfirmed")).toHaveLength(11);
-    expect(admittedWrites).toHaveLength(547);
-    expect(assessments.filter((assessment) => assessment.state === "structurally_exact")).toHaveLength(343);
+    expect(admittedWrites).toHaveLength(537);
+    expect(assessments.filter((assessment) => assessment.state === "structurally_exact")).toHaveLength(340);
     const tools = canvasCatalogTools(catalog);
     expect(tools.find((tool) => tool.name === "canvas_update_custom_gradebook_column")?.capability?.behavior.supportsReadback).toBe(true);
     // Deleting a gradebook column is course work admitted through its course, and its absence reads back exactly.

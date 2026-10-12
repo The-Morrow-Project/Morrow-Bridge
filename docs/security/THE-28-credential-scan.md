@@ -1,7 +1,7 @@
 # THE-28 credential scan receipt
 
 Result: the QR OAuth proof, the PAT probe, and the Canvas session-cookie capture are gone, and
-Morrow no longer mints Canvas access tokens. One borrowed credential remains, by decision: both
+Morrow no longer mints, regenerates, or receives a Canvas credential. One borrowed credential remains, by decision: both
 products reuse the Item Banks app's own token for Morrow's Item Bank calls. It stays in personal
 mode until Linear THE-85 replaces or removes it, and the CI gate allows it only at the sites listed
 below.
@@ -69,9 +69,30 @@ the helper's own tab and copies no cookie, so no working personal-mode flow used
 | `morrow-for-muse/reauth/wave5_resource_selftest.py`, `reauth/session_lifecycle_selftest.py`, `scripts/test_s4_install_lane.py` | Tests for the removed code removed | They tested `reauth()`, `_complete_reauth()`, and `keepalive-canvas.sh`. |
 | `morrow-for-muse/transport/local_chromium_selftest.py` | New check | The proxy allowlist must not contain `Network.getCookies`. |
 | `morrow-for-muse/dispatch/executor.py` | `inject_cookie_header` removed; a non-string credential slot now fails closed | The rig HTTPS lane could still send a dict in `canvas.pat` as a `Cookie` header. |
-| `desktop/packages/canvas-api-catalog/src/operation-admission.ts` (+ generated `connector/extension/generated/canvas-operation-admission.js`, `artifacts/canvas-api/canvas-admission-report.json`) | `canvas_create_access_token` and `canvas_update_access_token` held with reason `mints_a_credential` | Creating or regenerating a Canvas access token mints a credential. Morrow never creates one. The Bridge no longer offers either change; the result redaction stays as defense in depth. Tests and the admission documents are updated to the new 12 held / 547 admitted split. The generated admission file is Bridge source, so Morrow Bridge Extension moves to 1.0.140 with a new `connector/release-ledger.json` seal (1.0.139 shipped in Desktop 1.0.15 and stays sealed as released). |
-| `desktop/scripts/test/no-borrowed-credentials.test.mjs`, `.github/workflows/ci.yml` | New CI gate | Scans every tracked UTF-8 file, line by line, for the markers in this receipt, for CDP cookie reads and `Cookie` header replay (only the helper's expiry read and its tests are allowed), and for Item Banks token capture (only the THE-85 sites are allowed), and fails if a removed path comes back. It does not see a marker built at run time, split across lines, or inside a binary file. |
+| `desktop/packages/canvas-api-catalog/src/operation-admission.ts` (+ generated `connector/extension/generated/canvas-operation-admission.js`, `artifacts/canvas-api/canvas-admission-report.json`) | 12 credential routes held with reason `mints_a_credential` (listed below) | Morrow does not mint, regenerate, or receive a credential. The Bridge no longer offers these changes and the connector sends no command for them; the result redaction stays as defense in depth. Tests and the admission documents are updated to the new 22 held / 537 admitted split. The generated admission file is Bridge source, so Morrow Bridge Extension moves to 1.0.140 with a new `connector/release-ledger.json` seal (1.0.139 shipped in Desktop 1.0.15 and stays sealed as released). |
+| `desktop/scripts/test/no-borrowed-credentials.test.mjs`, `.github/workflows/ci.yml` | New CI gate | Scans every tracked UTF-8 file, line by line, for the markers in this receipt, for CDP cookie reads and `Cookie` header replay, and for Item Banks token capture. The only allowed matches are the exact existing lines, each once: the helper's expiry read and its tests, and the THE-85 sites. Any other match, including a new one inside an allowed file, fails. and fails if a removed path comes back. It does not see a marker built at run time, split across lines, or inside a binary file. |
 | `morrow-for-muse/scripts/carve.py`, `scripts/dev-suites.sh`, `scripts/test_package_shadowing.py`, `dispatch/integration_selftest.py`, `dispatch/executor.py`, `failures/catalog.json`, `DEPLOY.md`, `CHANGELOG.md`, `audit/*.md`, `moodle/session_selftest.py`, `desktop/scripts/test/ci-native-platforms.test.mjs` | References updated | They named the removed files. `carve.py` still denies `session/`, `lanes/`, and `qr-proof/`, so a restored copy cannot ship. |
+
+### Canvas writes held because they mint, regenerate, or return a credential
+
+No shipped Morrow feature calls any of these. They were generic catalog operations. Morrow PM decided on 2026-10-12 to hold all of them. `canvas_add_observee_with_credentials` stays admitted: it checks credentials the person supplies and mints none.
+
+| Group | Tool | Route |
+|---|---|---|
+| Person's access token | `canvas_create_access_token` | `POST /v1/users/{user_id}/tokens` |
+| Person's access token | `canvas_update_access_token` (`token_regenerate`) | `PUT /v1/users/{user_id}/tokens/{id}` |
+| Sign-in or service token | `canvas_create_jwt` | `POST /v1/jwts` |
+| Sign-in or service token | `canvas_refresh_jwt` | `POST /v1/jwts/refresh` |
+| Sign-in or service token | `canvas_deprecated_create_instaccess_token` | `POST /v1/inst_access_tokens` |
+| Sign-in or service token | `canvas_get_pandata_events_jwt_token_and_its_expiration_date` | `POST /v1/users/self/pandata_events_token` |
+| Sign-in or service token | `canvas_start_kaltura_session` | `POST /v1/services/kaltura_session` |
+| Pairing credential | `canvas_create_observer_pairing_code` | `POST /v1/users/{user_id}/observer_pairing_codes` |
+| Application secret | `canvas_regenerate_developer_key_secret` | `POST /v1/developer_keys/{id}/regenerate_secret` |
+| Application secret | `canvas_create_developer_key` | `POST /v1/accounts/{account_id}/developer_keys` |
+| Application secret | `canvas_create_lti_registration_lti_registrations` | `POST /v1/accounts/{account_id}/lti_registrations` |
+| Application secret | `canvas_create_lti_registration_apps` | `POST /v1/accounts/{account_id}/apps` |
+
+The last three were offered for standing Edit access before this change. Administrators create developer keys and LTI registrations in Canvas itself.
 
 ## Scan commands and output
 
@@ -153,8 +174,8 @@ A comment on the redaction rule that removes tokens from logged URLs.
 
 ```console
 $ git grep -n -I -F -e 'Network.getCookies' -- morrow-for-muse/helper/server.py
-morrow-for-muse/helper/server.py:1327:        Reads cookie METADATA ONLY through CDP (Network.getCookies scoped
-morrow-for-muse/helper/server.py:1346:                    self.tab, "Network.getCookies", {"urls": [base]},
+morrow-for-muse/helper/server.py:1327:        Uses cookie METADATA ONLY (Network.getCookies scoped to the tenant
+morrow-for-muse/helper/server.py:1348:                    self.tab, "Network.getCookies", {"urls": [base]},
 ```
 
 The helper's session-expiry warning, on its private pipe. CDP returns full cookie objects into
@@ -163,8 +184,8 @@ returns no cookie name or value. The proxy allowlist no longer contains this met
 
 `git grep -i -F 'New Access Token' -- . "${X[@]}"` hits 4 files: the Canvas API catalog description of
 `POST /v1/users/{user_id}/tokens` (2 generated copies) and Blackboard comments about OAuth token
-renewal. This PR holds that Canvas route and the token update route (`token_regenerate`) before
-dispatch with reason `mints_a_credential`, so Morrow cannot create or renew a token.
+renewal. This PR holds that Canvas route, the token update route (`token_regenerate`), and the other
+credential routes listed above before dispatch with reason `mints_a_credential`.
 
 The remaining references to `lanes/detect.py`, `qr-proof/`, `session/capture.py`, and
 `keepalive-canvas.sh` are removal notes (`DEPLOY.md`, `audit/`), history (`config/paths.py`,
@@ -223,6 +244,8 @@ baseline.
 | `carve.py` then `install-suites.sh` | 23/23 suites pass | 23/23 suites pass |
 | Repository gates (`check-repository` job, plus `ci-native-platforms.test.mjs` and `pre-commit-hook.test.mjs`) | not run | 46/46 pass |
 | Desktop `canvas-api-catalog` vitest | not run | 108/108 pass |
+| Connector runtime: no Bridge command for any held credential route | not run | pass (12 routes, 0 commands) |
+| Desktop browser harness `canvas-connector-browser.mjs` | not run | pass |
 | Desktop `pnpm scripts:test` | 3 fail locally (below) | 1450 pass, the same 3 fail locally |
 
 The branch collects 11 fewer pytest tests (2424 against 2435, skipped tests included): the deleted tests for the removed code. No failure comes from the

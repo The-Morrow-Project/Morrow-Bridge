@@ -412,7 +412,7 @@ test("Canvas Edit categories are exactly the bound admitted writes with exact re
   const supported = supportedEditableCanvasWrites()
     .map((operation) => `action:canvas:${operation.toolName}`)
     .sort();
-  assert.equal(supported.length, 336 - reviewOnlyDeleteWrites().length);
+  assert.equal(supported.length, 333 - reviewOnlyDeleteWrites().length);
   assert.ok(reviewOnlyDeleteWrites().length > 0);
   assert.deepEqual(editable, supported);
   // A bound write with no exact readback is offered for review too, one change at a time.
@@ -499,7 +499,7 @@ test("nonexact Canvas writes are offered for review only, and every granted Canv
     && canvasOperationAdmission(operation).write.state === "admitted"
     && !checkableCanvasWrite(operation)
     && !REVIEW_ONLY_ADMITTED_CANVAS_WRITES.has(operation.toolName));
-  assert.equal(nonexact.length, 204);
+  assert.equal(nonexact.length, 197);
   for (const operation of supportedWrites) {
     const option = canvasOption(options, operation.toolName);
     assert.equal(option.availability, "edit", operation.toolName);

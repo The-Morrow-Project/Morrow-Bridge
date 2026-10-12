@@ -7,47 +7,51 @@
     "writes": 559
   },
   "admission": {
-    "admitted": 547,
+    "admitted": 537,
     "admittedByCourseTargetKind": {
-      "none": 291,
+      "none": 281,
       "course_path": 234,
       "semantic_course_object": 16,
       "self_path": 6
     },
     "admittedByAuthority": {
       "course": 238,
-      "site": 309
+      "site": 299
     },
     "admittedCourseByCourseTargetKind": {
       "course_path": 223,
       "semantic_course_object": 15
     },
     "admittedSiteByClass": {
-      "account": 115,
+      "account": 111,
       "person": 95,
       "shared_object": 46,
       "learner_record": 33,
       "multi_course": 11,
-      "session_credential": 9
+      "session_credential": 3
     },
-    "held": 12,
+    "held": 22,
     "heldByReason": {
-      "multi_step_upload_requires_reviewed_transfer": 10,
-      "mints_a_credential": 2
+      "mints_a_credential": 12,
+      "multi_step_upload_requires_reviewed_transfer": 10
     },
     "heldByRouteFamily": {
       "courses": 5,
-      "users": 3,
-      "accounts": 1,
+      "users": 5,
+      "accounts": 4,
+      "jwts": 2,
+      "developer_keys": 1,
       "folders": 1,
       "groups": 1,
-      "sections": 1
+      "inst_access_tokens": 1,
+      "sections": 1,
+      "services": 1
     }
   },
   "readback": {
     "stateCounts": {
-      "structurally_exact": 343,
-      "unavailable": 169,
+      "structurally_exact": 340,
+      "unavailable": 162,
       "blocked": 24,
       "unconfirmed": 11
     },
@@ -64,13 +68,13 @@
       "summary_state_has_no_narrow_reader": 1
     },
     "routeTierCounts": {
-      "exact": 212,
-      "created_child": 72,
+      "exact": 211,
+      "created_child": 70,
       "parent_collection": 25,
       "declared": 20,
       "executor": 23,
       "mismatched": 2,
-      "none": 193
+      "none": 186
     },
     "namedReadbackTools": [
       "canvas_bulk_update_assignment_dates",
@@ -126,7 +130,6 @@
       "canvas_create_feedback_on_conversation_message",
       "canvas_create_folder_accounts",
       "canvas_create_group_groups",
-      "canvas_create_jwt",
       "canvas_create_link_outcome_accounts",
       "canvas_create_link_outcome_accounts_outcome_id",
       "canvas_create_link_outcome_courses",
@@ -136,7 +139,6 @@
       "canvas_create_membership",
       "canvas_create_new_grading_standard_accounts",
       "canvas_create_new_role",
-      "canvas_create_observer_pairing_code",
       "canvas_create_or_update_events_directly_for_course_timetable",
       "canvas_create_portfolio_notification",
       "canvas_create_rubricassociation",
@@ -152,7 +154,6 @@
       "canvas_delete_rubricassociation",
       "canvas_delete_single_rubric_assessment",
       "canvas_delete_submission_comment",
-      "canvas_deprecated_create_instaccess_token",
       "canvas_deprecated_self_register_user",
       "canvas_disable_assignments_currently_enabled_for_grade_export_to_sis",
       "canvas_disable_summary_courses",
@@ -165,7 +166,6 @@
       "canvas_flagging_question",
       "canvas_force_password_reset",
       "canvas_generate_discovery_page_preview_token",
-      "canvas_get_pandata_events_jwt_token_and_its_expiration_date",
       "canvas_grade_or_comment_on_multiple_submissions_courses_assignments",
       "canvas_grade_or_comment_on_multiple_submissions_courses_submissions",
       "canvas_grade_or_comment_on_multiple_submissions_sections_assignments",
@@ -207,8 +207,6 @@
       "canvas_rate_entry_courses",
       "canvas_rate_entry_groups",
       "canvas_re_lock_module_progressions",
-      "canvas_refresh_jwt",
-      "canvas_regenerate_developer_key_secret",
       "canvas_reject_course_invitation",
       "canvas_remove_course_from_favorites",
       "canvas_remove_domain_from_account",
@@ -249,7 +247,6 @@
       "canvas_set_usage_rights_users",
       "canvas_share_brandconfig_theme",
       "canvas_split_merged_users_into_separate_users",
-      "canvas_start_kaltura_session",
       "canvas_submit_assignment_courses",
       "canvas_submit_assignment_sections",
       "canvas_summary_feedback_courses",

@@ -139,12 +139,27 @@ function reviewedFileTransferRoute(operation) {
         || RUBRIC_CSV_UPLOAD_ROUTE.test(operation.path));
 }
 /**
- * Writes that mint or regenerate a Canvas access token. Morrow never creates a credential: a
- * token is not a teaching change, and one Morrow minted would be a credential nobody gave it.
+ * Writes that mint, regenerate, or return a credential: a person's access token, sign-in or
+ * service token, or pairing code, and an application's client secret. Morrow never mints,
+ * regenerates, or receives a credential, so none of these is sent; a person or an administrator
+ * does them in Canvas itself.
  */
+const CREDENTIAL_MINTING_ROUTES = Object.freeze([
+    "POST /v1/users/{user_id}/tokens",
+    "PUT /v1/users/{user_id}/tokens/{id}",
+    "POST /v1/jwts",
+    "POST /v1/jwts/refresh",
+    "POST /v1/inst_access_tokens",
+    "POST /v1/users/self/pandata_events_token",
+    "POST /v1/services/kaltura_session",
+    "POST /v1/users/{user_id}/observer_pairing_codes",
+    "POST /v1/developer_keys/{id}/regenerate_secret",
+    "POST /v1/accounts/{account_id}/developer_keys",
+    "POST /v1/accounts/{account_id}/lti_registrations",
+    "POST /v1/accounts/{account_id}/apps",
+]);
 function credentialMintingRoute(operation) {
-    return (operation.method === "POST" && operation.path === "/v1/users/{user_id}/tokens")
-        || (operation.method === "PUT" && operation.path === "/v1/users/{user_id}/tokens/{id}");
+    return CREDENTIAL_MINTING_ROUTES.includes(`${operation.method} ${operation.path}`);
 }
 /**
  * Every Canvas upload route Morrow's reviewed file transfer carries, by tool name, with its route.
@@ -405,7 +420,7 @@ export function canvasAdmissionReason(admission) {
     if (admission.state !== "held")
         return undefined;
     if (admission.reason === "mints_a_credential") {
-        return "This change would create or renew a Canvas access token, which is a sign-in credential, and Morrow never creates credentials. Manage your access tokens yourself in your Canvas account settings.";
+        return "This change would create, renew, or return a sign-in credential or an application secret, and Morrow does not create or receive credentials. Do it yourself in Canvas: in your account settings, or on the Developer Keys page if you are an administrator.";
     }
     return "Canvas takes a file's bytes in a later request that this route cannot carry, so Morrow sends every file through its reviewed file transfer, which checks the saved file and its bytes. Ask Morrow to prepare the file upload for this same target.";
 }

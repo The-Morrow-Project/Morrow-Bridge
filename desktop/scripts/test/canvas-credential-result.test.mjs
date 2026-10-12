@@ -42,9 +42,17 @@ function redactor() {
   }
 }
 
-test("creating or renewing an access token is held before dispatch and never offered", () => {
+test("every write that mints, regenerates, or returns a credential is held before dispatch and never offered", () => {
   const options = categoriesForBinding({ provider: "canvas" }, canvasOperations);
-  for (const toolName of ["canvas_create_access_token", "canvas_update_access_token"]) {
+  const minting = [
+    "canvas_create_access_token", "canvas_update_access_token", "canvas_create_jwt", "canvas_refresh_jwt",
+    "canvas_deprecated_create_instaccess_token", "canvas_get_pandata_events_jwt_token_and_its_expiration_date",
+    "canvas_start_kaltura_session", "canvas_create_observer_pairing_code", "canvas_regenerate_developer_key_secret",
+    "canvas_create_developer_key", "canvas_create_lti_registration_lti_registrations", "canvas_create_lti_registration_apps",
+  ];
+  assert.deepEqual(canvasOperations.filter((entry) => canvasOperationAdmission(entry).write.reason === "mints_a_credential")
+    .map((entry) => entry.toolName).sort(), [...minting].sort());
+  for (const toolName of minting) {
     const admission = canvasOperationAdmission(operation(toolName));
     assert.deepEqual(admission.write, { state: "held", reason: "mints_a_credential" }, toolName);
     assert.deepEqual(canvasReadbackAssessment(canvasOperations, operation(toolName)), { state: "not_applicable", reason: "write_held" }, toolName);

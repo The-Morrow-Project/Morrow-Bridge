@@ -38,7 +38,7 @@ const BORROWED_CREDENTIAL_MARKERS = Object.freeze([
 ]);
 
 /**
- * Files allowed one marker. The login helper reads cookie expiry times on its private pipe for the
+ * Exact lines allowed one marker, per file. The login helper reads cookie expiry times on its private pipe for the
  * session-expiry warning, and returns no cookie name or value; the other cookie entries are its
  * tests and the proxy check that keeps the method off the proxy.
  *
@@ -47,26 +47,69 @@ const BORROWED_CREDENTIAL_MARKERS = Object.freeze([
  * until Linear THE-85 replaces or removes it, and these are the only places allowed to do it.
  */
 const ALLOWED = Object.freeze({
-  "browser cookie capture or replay": Object.freeze([
-    "morrow-for-muse/helper/server.py",
-    "morrow-for-muse/helper/cookie_expiry_selftest.py",
-    "morrow-for-muse/helper/helper_selftest.py",
-    "morrow-for-muse/scripts/test_install_after_use.py",
-    "morrow-for-muse/transport/local_chromium_selftest.py",
-  ]),
-  "Item Banks app token capture": Object.freeze([
-    "desktop/connector/extension/src/item-bank-credential.js",
-    "desktop/connector/extension/src/item-bank-executor.js",
-    "desktop/connector/extension/src/quiz-bank-draw-executor.js",
-    "morrow-for-muse/failures/live_verify.py",
-    "morrow-for-muse/knowledge/item-banks-sdk.md",
-    "morrow-for-muse/provision/launch_driver.py",
-    "morrow-for-muse/transport/item_bank_sdk.py",
-    "morrow-for-muse/transport/item_bank_sdk_selftest.py",
-    "morrow-for-muse/transport/local_chromium.py",
-    "morrow-for-muse/transport/local_chromium_selftest.py",
-    "morrow-for-muse/transport/test_item_banks_custom_domain.py",
-  ]),
+  "browser cookie capture or replay": Object.freeze({
+    "morrow-for-muse/helper/cookie_expiry_selftest.py": Object.freeze([
+      "\"\"\"Fake CDP: canned Network.getCookies replies, optional failure.\"\"\"",
+      "if method == \"Network.getCookies\":",
+    ]),
+    "morrow-for-muse/helper/helper_selftest.py": Object.freeze([
+      "assert method == \"Network.getCookies\"",
+      "\"        assert method == 'Network.getCookies'\\n\"",
+    ]),
+    "morrow-for-muse/helper/server.py": Object.freeze([
+      "Uses cookie METADATA ONLY (Network.getCookies scoped to the tenant",
+      "self.tab, \"Network.getCookies\", {\"urls\": [base]},",
+    ]),
+    "morrow-for-muse/scripts/test_install_after_use.py": Object.freeze([
+      "'    if method == \"Network.getCookies\":\\n'",
+    ]),
+    "morrow-for-muse/transport/local_chromium_selftest.py": Object.freeze([
+      "# reads Network.getCookies on the private pipe, not the proxy.",
+      "assert \"Network.getCookies\" not in allowed, \\",
+      "\"the proxy allowlist must not expose Network.getCookies\"",
+    ]),
+  }),
+  "Item Banks app token capture": Object.freeze({
+    "desktop/connector/extension/src/item-bank-credential.js": Object.freeze([
+      "const token = requestHeader(details.requestHeaders, \"authorization\");",
+    ]),
+    "desktop/connector/extension/src/item-bank-executor.js": Object.freeze([
+      "const storedToken = sessionStorage.getItem(\"banks.build_token\") || \"\";",
+    ]),
+    "desktop/connector/extension/src/quiz-bank-draw-executor.js": Object.freeze([
+      "const token = String(localStorage.getItem(\"quiz.build_token\") || sessionStorage.getItem(\"quiz.build_token\") || \"\");",
+    ]),
+    "morrow-for-muse/failures/live_verify.py": Object.freeze([
+      "try { token = sessionStorage.getItem('banks.build_token'); } catch (e) {}",
+    ]),
+    "morrow-for-muse/knowledge/item-banks-sdk.md": Object.freeze([
+      "(`capture_request_headers` navigates itself). Two consecutive",
+    ]),
+    "morrow-for-muse/provision/launch_driver.py": Object.freeze([
+      "the transport's capture_request_headers",
+      "request appears, via the transport's capture_request_headers",
+      "rurl, headers = cdp.capture_request_headers(",
+    ]),
+    "morrow-for-muse/transport/item_bank_sdk.py": Object.freeze([
+      "# is not a provider refusal. capture_request_headers navigates",
+      "request_url, headers = self._cdp.capture_request_headers(",
+    ]),
+    "morrow-for-muse/transport/item_bank_sdk_selftest.py": Object.freeze([
+      "capture_request_headers scripts the authorized quiz-api request;",
+      "# LANE6-9: when positive, capture_request_headers raises",
+      "def capture_request_headers(self, tab, url, match, timeout=120):",
+    ]),
+    "morrow-for-muse/transport/local_chromium.py": Object.freeze([
+      "def capture_request_headers(self, tab, url, match, timeout=120):",
+    ]),
+    "morrow-for-muse/transport/local_chromium_selftest.py": Object.freeze([
+      "url, headers = fake.capture_request_headers(",
+      "fake.capture_request_headers({\"id\": \"t\"}, \"https://t/\",",
+    ]),
+    "morrow-for-muse/transport/test_item_banks_custom_domain.py": Object.freeze([
+      "def capture_request_headers(self, tab, url, match, timeout=120):",
+    ]),
+  }),
 });
 
 /** Prefixes of removed borrowed-credential code that must stay out of the tree. */
@@ -88,16 +131,21 @@ function borrowedCredentialHits(files, read) {
     if (!isUtf8(contents) || contents.includes(0)) continue;
     const lines = contents.toString("utf8").split("\n");
     for (const [name, pattern] of BORROWED_CREDENTIAL_MARKERS) {
-      if (ALLOWED[name]?.includes(path)) continue;
+      // Each allowed line is consumed once, so a second copy of it, or any other matching line in
+      // the same file, is still a hit.
+      const remaining = [...(ALLOWED[name]?.[path] || [])];
       for (const [index, line] of lines.entries()) {
-        if (pattern.test(line)) found.push(`${path}:${index + 1} ${name}`);
+        if (!pattern.test(line)) continue;
+        const allowed = remaining.indexOf(line.trim());
+        if (allowed >= 0) remaining.splice(allowed, 1);
+        else found.push(`${path}:${index + 1} ${name}`);
       }
     }
   }
   return found;
 }
 
-test("the scan finds each marker and a removed path, and passes ordinary credential code and an allowed use", () => {
+test("the scan finds each marker and a removed path, and passes ordinary credential code", () => {
   const files = {
     "a.py": 'url = base + "/api/v1/mobile_verify.json"\n',
     "b.py": 'page = "/profile/qr_mobile_login"\n',
@@ -109,10 +157,7 @@ test("the scan finds each marker and a removed path, and passes ordinary credent
     "morrow-for-muse/transport/probe.py":
       '    res = cdp_call(target_id, "Network.getCookies", {"urls": [base + "/"]})\n'
       + '        headers={"Cookie": cookie_header,\n',
-    "morrow-for-muse/helper/server.py": '    res = self.cdp.call(self.tab, "Network.getCookies", {"urls": [base]})\n',
     "desktop/connector/extension/src/new-capture.js": 'const token = requestHeader(details.requestHeaders, "authorization");\n',
-    "desktop/connector/extension/src/item-bank-credential.js": 'const token = requestHeader(details.requestHeaders, "authorization");\n',
-    "morrow-for-muse/session/capture.py": "pass\n",
     "ok.ts": 'const body = { grant_type: "client_credentials", client_id: config.applicationKey };\n',
   };
   const hits = borrowedCredentialHits(Object.keys(files), (path) => Buffer.from(files[path]));
@@ -126,8 +171,24 @@ test("the scan finds each marker and a removed path, and passes ordinary credent
     "morrow-for-muse/transport/probe.py:1 browser cookie capture or replay",
     "morrow-for-muse/transport/probe.py:2 browser cookie capture or replay",
     "desktop/connector/extension/src/new-capture.js:1 Item Banks app token capture",
-    "morrow-for-muse/session/capture.py removed path",
   ]);
+});
+
+test("an allowed file passes only its exact allowed lines, and a capture added to it is a hit", () => {
+  const appended = {
+    "browser cookie capture or replay": '    res = cdp_call(target_id, "Network.getAllCookies", {})',
+    "Item Banks app token capture": '  const token = requestHeader(details.requestHeaders, "authorization");',
+  };
+  for (const [name, files] of Object.entries(ALLOWED)) {
+    for (const [path, lines] of Object.entries(files)) {
+      const allowedOnly = Buffer.from(`${lines.join("\n")}\n`);
+      assert.deepEqual(borrowedCredentialHits([path], () => allowedOnly), [], path);
+      const withCapture = Buffer.from(`${lines.join("\n")}\n${appended[name]}\n`);
+      assert.deepEqual(borrowedCredentialHits([path], () => withCapture), [`${path}:${lines.length + 1} ${name}`], path);
+      const duplicated = Buffer.from(`${lines.join("\n")}\n${lines[0]}\n`);
+      assert.deepEqual(borrowedCredentialHits([path], () => duplicated), [`${path}:${lines.length + 1} ${name}`], path);
+    }
+  }
 });
 
 test("no tracked file carries borrowed-credential code", () => {

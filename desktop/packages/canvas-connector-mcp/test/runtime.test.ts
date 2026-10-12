@@ -1032,6 +1032,41 @@ describe("CanvasConnectorRuntime", () => {
     expect(commands).toBe(2);
   });
 
+  it("sends no Bridge command for any Canvas write that mints, regenerates, or returns a credential", async () => {
+    const runtime = await start();
+    const socket = sockets.at(-1)!;
+    let commands = 0;
+    respond(socket, () => { commands += 1; });
+    const grant = {
+      plan_digest: "a".repeat(64),
+      approval_grant_digest: "b".repeat(64),
+      effect_receipt_id: "effect:credential-hold",
+      dispatch_attempt: 1,
+      gateway_process_id: "gateway:connector-test",
+    };
+    const minting: Record<string, Record<string, string>> = {
+      canvas_create_access_token: { user_id: "self" },
+      canvas_update_access_token: { user_id: "self", id: "9" },
+      canvas_create_jwt: {},
+      canvas_refresh_jwt: {},
+      canvas_deprecated_create_instaccess_token: {},
+      canvas_get_pandata_events_jwt_token_and_its_expiration_date: {},
+      canvas_start_kaltura_session: {},
+      canvas_create_observer_pairing_code: { user_id: "self" },
+      canvas_regenerate_developer_key_secret: { id: "9" },
+      canvas_create_developer_key: { account_id: "1" },
+      canvas_create_lti_registration_lti_registrations: { account_id: "1" },
+      canvas_create_lti_registration_apps: { account_id: "1" },
+    };
+    for (const [toolName, args] of Object.entries(minting)) {
+      expect(await runtime.call(toolName, {
+        ...args,
+        _morrow: { source_binding_id: "canvas:test-account", outer_grant: grant },
+      }), toolName).toMatchObject({ ok: false, resultState: "not_sent", problem: { message: expect.stringContaining("does not create or receive credentials") } });
+    }
+    expect(commands).toBe(0);
+  });
+
   it("forwards one exact guarded Assignment image repair only through the current extension", async () => {
     const runtime = await start(undefined, "1.0.0-rc.2");
     const socket = sockets.at(-1)!;
