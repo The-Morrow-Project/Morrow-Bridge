@@ -233,7 +233,7 @@ Each finding was read. None is a real or borrowed credential.
 
 ## Personal-mode tests
 
-Morrow for Muse is the personal-mode product these removals touch. Its CI steps ran on ORNACIA
+Morrow Bridge for Muse is the personal-mode product these removals touch. Its CI steps ran on ORNACIA
 (Python 3.12.12, hash-locked requirements), on this branch and on `origin/main` (`1b0bb8b`) as the
 baseline.
 
