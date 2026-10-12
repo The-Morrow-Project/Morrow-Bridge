@@ -138,7 +138,7 @@ New or explicitly redesigned course content must remain fluid within the learnin
 
 Use direct, useful course language. A short joke can acknowledge repetitive work. Never joke about a learner, an accessibility need, a failed check, or an error. Avoid a slogan when a concrete task would explain more.
 
-The extension is **Morrow Bridge**. Keep technical package and tool identifiers stable. Use the product name in installation steps and visible interface text.
+The in-app product is **Morrow Bridge**. Docs and release titles use **Morrow Bridge for Mac and Windows**. A Mac-only release title uses **Morrow Bridge for Mac**. Chrome shows the extension as **Morrow Bridge Extension**. In prose, call it the Bridge browser extension. Keep technical package and tool identifiers stable. Use the product name in installation steps and visible interface text.
 
 | Use | Avoid |
 | --- | --- |

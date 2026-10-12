@@ -1,12 +1,10 @@
 # Blackboard recovery contract
 
-**Status: research only. NOT IMPLEMENTED.** This is the ported
-research contract describing how a Blackboard browser path WOULD have
-to be built. Nothing below exists in the Morrow for Muse package: no
+**Status: Blackboard is not shipped.** This note is not a setup guide.
+Nothing below exists in the Morrow for Muse package: no
 Blackboard auth, no Blackboard lane, no Blackboard transport, no
-Blackboard catalog rows, no Blackboard proof. SCOPE.md lists
-Blackboard as an honestly-disclosed roadmap item, not a v1 ship
-criterion. Do not offer Blackboard operations to the educator.
+Blackboard catalog rows, no Blackboard proof. Do not offer Blackboard
+operations to the educator.
 
 Historical source (not shipped in this package): `origin-morrow/docs/research/blackboard-recovery-contract.md`
 (research only, updated 2026-09-07, superseded in part).

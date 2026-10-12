@@ -119,18 +119,18 @@ test("every page that states a version names the Morrow product it belongs to", 
 
   const versioning = readFileSync(new URL("docs/versioning.md", repositoryRoot), "utf8");
   const titles = [...versioning.matchAll(/gh release create (\S+)\/vX\.Y\.Z [^`]*--title "([^"]+)"/g)].map(([, tag, title]) => `${tag}: ${title}`);
-  assert.deepEqual(titles, ["desktop: Morrow Desktop X.Y.Z", "muse: Morrow for Muse X.Y.Z"], "each release title names its product");
+  assert.deepEqual(titles, ["desktop: Morrow Bridge for Mac and Windows X.Y.Z", "muse: Morrow for Muse X.Y.Z"], "each release title names its product");
 });
 
 // The root README and docs/products.md send readers to desktop/README.md for Morrow Desktop. Written
 // before the fix (final sweep 2026-09-23): that page was titled "# Morrow" and never said "Morrow
 // Desktop", pages called the product "the Morrow desktop app", and Morrow for Muse documents called
 // it "the desktop Morrow".
-test("the Morrow Desktop start page and every page that names the product call it Morrow Desktop", () => {
+test("the Morrow Bridge start page and every page that names the product call it Morrow Bridge", () => {
   const readme = read("README.md");
-  assert.equal(readme.split("\n", 1)[0], "# Morrow Desktop", "desktop/README.md is titled with the product's name");
+  assert.equal(readme.split("\n", 1)[0], "# Morrow Bridge for Mac and Windows", "desktop/README.md is titled with the product's name");
   const opening = readme.split(/\n{2,}/).find((paragraph) => !/^(?:#|\[!\[)/.test(paragraph)) || "";
-  assert.match(opening, /^Morrow Desktop, the app for Mac and Windows, /, "desktop/README.md opens with the product's name");
+  assert.match(opening, /^Morrow Bridge for Mac and Windows /, "desktop/README.md opens with the product's name");
 
   const repositoryRoot = new URL("../", root);
   const listed = spawnSync("git", ["-C", fileURLToPath(repositoryRoot), "ls-files", "-z", "--", "*.md", "*.html"], { encoding: "utf8" });
@@ -141,7 +141,7 @@ test("the Morrow Desktop start page and every page that names the product call i
     return [...text.matchAll(/\bMorrow\s+desktop\b|\b[Dd]esktop\s+Morrow\b/g)]
       .map((match) => `${page}:${text.slice(0, match.index).split("\n").length} "${collapse(match[0])}"`);
   });
-  assert.deepEqual(misnamed, [], "the desktop product is Morrow Desktop");
+  assert.deepEqual(misnamed, [], "the in-app product is Morrow Bridge");
 });
 
 // The newest section of CHANGELOG.md becomes the text of the GitHub release that
@@ -199,51 +199,48 @@ test("the newest release notes say how Edit is turned on from a conversation", (
   assert.ok(bullet.includes(refusal), `the notes must say what Morrow answers for a removal: ${refusal}`);
 });
 
-test("the documented platform coverage matches the packages that ship", (t) => {
+test("the documented platform coverage matches the learning platforms that ship", (t) => {
+  for (const doc of ["ARCHITECTURE.md", "LIMITATIONS.md", "README.md"]) {
+    const text = read(doc);
+    assert.match(text, /Blackboard is not shipped/, `${doc} must say Blackboard is not shipped`);
+    assert.doesNotMatch(text, /Blackboard works through/i, `${doc} must not present Blackboard as a supported route`);
+  }
   if (present(BLACKBOARD_PACKAGE)) {
-    for (const doc of ["ARCHITECTURE.md", "LIMITATIONS.md"]) {
-      assert.match(read(doc), /Blackboard/, `${BLACKBOARD_PACKAGE} ships, so ${doc} must state the Blackboard route and its evidence`);
-    }
-  } else {
-    t.diagnostic(`${BLACKBOARD_PACKAGE} is absent; the Blackboard coverage rule does not apply`);
+    t.diagnostic(`${BLACKBOARD_PACKAGE} may remain in the tree; public docs still say Blackboard is not shipped`);
   }
 
   if (present(MOODLE_EXECUTOR)) {
-    assert.match(read("ARCHITECTURE.md"), /Moodle/, `${MOODLE_EXECUTOR} ships, so ARCHITECTURE.md must describe the Moodle route`);
+    assert.match(read("ARCHITECTURE.md"), /Moodle is an early development version and needs live testing/, `${MOODLE_EXECUTOR} is early and needs live testing`);
   } else {
     t.diagnostic(`${MOODLE_EXECUTOR} is absent; the Moodle coverage rule does not apply`);
   }
 });
 
-test("every section that describes Blackboard says no live tenant has been tested", () => {
-  // The qualifier is checked per section, not per sentence, because that is how the documents carry
-  // it: `ARCHITECTURE.md` states it once for its Blackboard section and says it covers the section.
-  const qualifier = /no live [^.]*tenant has been tested|no live tenant has run|no live-tenant evidence|live-untested|live-unverified|mocked-HTTPS/i;
+test("every section that describes Blackboard says it is not shipped", () => {
   const unqualified = [];
-  for (const doc of ["ARCHITECTURE.md", "LIMITATIONS.md"]) {
+  for (const doc of ["ARCHITECTURE.md", "LIMITATIONS.md", "README.md"]) {
     for (const section of headingSections(read(doc))) {
       if (!/Blackboard/.test(section.text)) continue;
-      if (qualifier.test(section.text)) continue;
+      if (/Blackboard is not shipped/i.test(section.text)) continue;
       unqualified.push(`${doc}:${section.line} ${section.heading}`);
     }
   }
-  assert.deepEqual(unqualified, [], "a section that describes Blackboard must state that no live Blackboard tenant has been tested");
+  assert.deepEqual(unqualified, [], "a section that names Blackboard must say Blackboard is not shipped");
 });
 
-test("no document claims a tested live Blackboard tenant", () => {
-  const untested = /no live Blackboard tenant has been tested/i;
-  // Only a claim that binds Blackboard to live evidence fails. The canonical platform sentence
-  // names Canvas live proof and the untested Blackboard tenant together, and it must keep passing.
+test("no document claims a shipped or live-tested Blackboard route", () => {
   const claimsLiveEvidence = [
     /(?<!\bno )\blive Blackboard tenant has been tested/i,
     /\bBlackboard\b[^.;]{0,80}\b(?:is|was|are|were|has been|have been)\s+(?:live[- ]?(?:tested|verified)|verified (?:on|against) a live|tested (?:on|against) a live|proved (?:on|against) a live)/i,
+    /can also connect to (?:a )?Blackboard/i,
+    /Blackboard works through/i,
   ];
   const problems = [];
   for (const doc of CLAIM_DOCS) {
     const text = read(doc);
     if (!/Blackboard/.test(text)) continue;
-    if (!untested.test(text)) {
-      problems.push(`${doc} describes Blackboard without stating that no live Blackboard tenant has been tested`);
+    if (!/Blackboard is not shipped/i.test(text)) {
+      problems.push(`${doc} names Blackboard without saying Blackboard is not shipped`);
     }
     for (const sentence of sentences(text)) {
       for (const pattern of claimsLiveEvidence) {
@@ -251,7 +248,7 @@ test("no document claims a tested live Blackboard tenant", () => {
       }
     }
   }
-  assert.deepEqual(problems, [], "the Blackboard route is proved against local mocked-HTTPS tests only");
+  assert.deepEqual(problems, [], "Blackboard is not a shipped learning platform");
 });
 
 // LIMITATIONS.md holds the technical platform sentence. The desktop README quotes it word for word;
@@ -269,8 +266,8 @@ test("the platform sentence is quoted where LIMITATIONS.md says, and the landing
 
   const plainFacts = [
     [/\bCanvas\b[^.]*\b(?:live|real) test course/i, "selected Canvas tasks have live test-course proof"],
-    [/\bMoodle\b[^.]*\bMoodle test course/i, "part of the Moodle catalog has been checked on a Moodle test course"],
-    [/no live Blackboard site has been tested/i, "no live Blackboard site has been tested"],
+    [/Moodle is an early development version and needs live testing/i, "Moodle is an early development version and needs live testing"],
+    [/Blackboard is not shipped/i, "Blackboard is not shipped"],
   ];
   const problems = [];
   for (const doc of ["../README.md", "../docs/products.md"]) {

@@ -15,11 +15,11 @@ node scripts/package-mcp-bundle.mjs --target win32-x64 --unsigned-release --outp
 It writes `Morrow-<version>-win-x64.exe` and `receipt.json` into that folder.
 The receipt ties the installer to the commit it was built from. The same step 4
 installs, starts, repairs, and removes that exact installer in a test run.
-No Windows 1.0.6 or 1.0.7 installer was published. Until Morrow Desktop 1.0.15 is published, the Windows download remains the published 1.0.14 installer. Published 1.0.14: `Morrow-1.0.14-win-x64.exe`. Every published Windows artifact so far is unsigned. Automatic updates remain disabled. Use the
+No Windows 1.0.6 or 1.0.7 installer was published. Until Morrow Bridge for Mac and Windows 1.0.15 is published, the Windows download remains the published 1.0.14 installer. Published 1.0.14: `Morrow-1.0.14-win-x64.exe`. Every published Windows artifact so far is unsigned. Automatic updates remain disabled. Use the
 complete NSIS installer; do not deploy an unpacked app or a separately copied
 `MorrowPayload` directory.
 
-## The Morrow Bridge delivery route
+## The Bridge browser extension delivery route
 
 Every current build carries the temporary Load unpacked route. The package
 script and builder do not accept an environment override for this choice. A
@@ -78,16 +78,17 @@ installation keeps data: `State`, the materials folder, the `Materials` folder
 Morrow made first when a different materials folder was chosen later, the
 `Assistant settings backups` folder, the `Window data` folder where Morrow's
 window keeps its caches and site data while Morrow is open, the Bridge folder
-Chrome loads, the Blackboard credential
-folder, the Blackboard configuration file, and each assistant configuration file
-Morrow wrote.
+Chrome loads, and each assistant configuration file
+Morrow wrote. Blackboard is not shipped. If an older copy left a Blackboard credential
+folder or a Blackboard configuration file, the list names those paths too.
 
 The action asks for a confirmation that lists every path it will remove and
 every path it will not. It first takes Morrow's own `morrow` entry out of each
 assistant configuration file Morrow wrote and leaves the rest of that file; if it
 cannot, it stops, names the file, and removes nothing. It then removes only paths
-inside Morrow's own user-data folder, the Blackboard credential folder, and the
-Blackboard configuration file.
+inside Morrow's own user-data folder. Blackboard is not shipped. If a leftover
+Blackboard credential folder or Blackboard configuration file is listed, the
+removal deletes that path too.
 It keeps the `Assistant settings backups` folder and the `Window data`
 folder; delete `Window data` after you remove the application. It never removes an
 assistant's own configuration file. After the removal it reads each path again

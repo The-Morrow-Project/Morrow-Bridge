@@ -1,6 +1,6 @@
 # Test Morrow MCP from an extracted archive (engineering route)
 
-The normal installation path is [Morrow Desktop](../../README.md#the-morrow-desktop-app). Published unsigned installers are available for Mac with Apple silicon and Windows x64. Morrow Desktop installs Morrow MCP, writes the assistant configuration, and guides you through the Chrome step without a terminal.
+The normal installation path is [Morrow Bridge](../../README.md#the-morrow-bridge-app). Published unsigned installers are available for Mac with Apple silicon and Windows x64. Morrow Bridge installs Morrow MCP, writes the assistant configuration, and guides you through the Chrome step without a terminal.
 
 Use this file only to test the MCP configuration and startup in an existing engineering archive. It asks you to run commands in a terminal. The current packager creates Desktop payloads and installers; it does not create this historical archive. See the [engineering archive record](../../README.md#development-and-engineering-evidence).
 
@@ -22,11 +22,11 @@ This command sets up only the current project. Reopen that project in your assis
 
 ## 2. Use a supported route for course setup
 
-Morrow pairs only a Morrow Bridge loaded from a Bridge folder that Morrow set up. The archive commands above prepare no such folder. **Connect Morrow** refuses a Bridge loaded from the archive's `app/connector/extension`.
+Morrow pairs only the Bridge browser extension loaded from a Bridge folder that Morrow set up. Chrome shows that extension as Morrow Bridge Extension. The archive commands above prepare no such folder. **Connect Morrow** refuses a Bridge loaded from the archive's `app/connector/extension`.
 
 For complete course setup, follow one of these existing paths:
 
-- [Morrow Desktop setup](../../README.md#the-morrow-desktop-app), the normal installation path.
+- [Morrow Bridge setup](../../README.md#the-morrow-bridge-app), the normal installation path.
 - [Install from source for development](../../README.md#install-from-source-for-development). Follow the whole source setup; `pnpm run setup` prepares `connector/extension` with its local pairing configuration and prints the folder to load.
 
 ## If setup stops

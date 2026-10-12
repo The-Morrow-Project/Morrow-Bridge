@@ -27,7 +27,7 @@ its boundary. Do not load every document before every call.
 | [item-banks-sdk.md](item-banks-sdk.md) | Private SDK, bank scope, destructive effects |
 | [privacy-ferpa.md](privacy-ferpa.md) | Encrypted learner projection and its limits |
 | [meridian-principles.md](meridian-principles.md) | Preservation and learner-route principles |
-| [blackboard-recovery.md](blackboard-recovery.md) | Roadmap boundary; no shipped Blackboard operations |
+| [blackboard-recovery.md](blackboard-recovery.md) | Blackboard is not shipped |
 
 ## Runtime and procedure sources
 

@@ -175,6 +175,6 @@ Morrow does not set the platform's training, review, or retention policies.
 
 ## Getting help
 
-For help or questions, email hello@meetmorrow.app or see
+For help or questions, email info@morrowproject.org or see
 meetmorrow.app/support. Do not send student information: no student
 names, records, or screenshots that show students, and no passwords.

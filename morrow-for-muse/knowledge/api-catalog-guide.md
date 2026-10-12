@@ -5,7 +5,7 @@ mixing them up is the fastest way to claim something that is not true.
 
 ## Catalog A: the desktop research catalog (NOT dispatchable)
 
-Historical provenance: `origin-morrow/` is the Morrow Desktop monorepo,
+Historical provenance: `origin-morrow/` is the Morrow Bridge monorepo,
 not shipped in this package. `origin-morrow/packages/canvas-api-catalog/`
 is a TypeScript package
 (`@morrow/canvas-api-catalog@1.0.0`, 4681 lines across 6 modules) that
@@ -157,8 +157,8 @@ lane with the encrypted vault. See `knowledge/privacy-ferpa.md`.
 
 Moodle uses the governed installed-Chromium command path. Follow `moodle/SKILL.md` and
 `SCOPE.md`; do not route Moodle operations through the Canvas catalog.
-Blackboard: no implementation exists. **NOT IMPLEMENTED** here (see
-`knowledge/blackboard-recovery.md` for the research status).
+Blackboard is not shipped. Do not offer it (see
+`knowledge/blackboard-recovery.md`).
 
 ## NOT IMPLEMENTED in for-muse (do not offer, do not imply)
 

@@ -694,8 +694,7 @@ encrypted vault, live-proven learner-data rows dispatch de-identified
 (see "Privacy" below; fixture-proven, not yet live-proven end to end).
 Item Bank IB- rows marked live-proven
 dispatch through the executor's Item Banks SDK lane (see SCOPE.md for
-which ones). Out for v1: Blackboard (an honestly-disclosed roadmap item,
-not a ship criterion), the retired form relay, and every Canvas row not
+which ones). Out for v1: Blackboard is not shipped, the retired form relay, and every Canvas row not
 marked live-proven. Moodle uses `bin/morrow moodle` with pinned browser
 adapters. It is a development candidate; native first-use, production
 admission, and live provider proof remain release gates. Full declaration:
@@ -960,7 +959,7 @@ Honest limitations (not defects, but know them):
 When the educator asks how to reach Morrow, or a failure message
 does not explain what went wrong, give them this:
 
-- Email hello@meetmorrow.app, or see meetmorrow.app/support.
+- Email info@morrowproject.org, or see meetmorrow.app/support.
 - Include the Morrow for Muse version: run `bin/morrow version` from
   this tree and give them its first line (`morrow <version>`); the
   helper's `/status` reports the same number as `helper_version`.

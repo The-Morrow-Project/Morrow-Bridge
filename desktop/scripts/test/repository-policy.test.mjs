@@ -20,7 +20,7 @@ const repositoryRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url
 const read = (path) => readFileSync(join(repositoryRoot, path), "utf8");
 const collapse = (value) => value.replace(/\s+/g, " ").trim();
 
-const REPORT_ADDRESS = "hello@meetmorrow.app";
+const REPORT_ADDRESS = "info@morrowproject.org";
 const SECURITY_PAGE = "https://meetmorrow.app/security";
 const SUPPORT_PAGE = "https://meetmorrow.app/support";
 const TEMPLATES = ".github/ISSUE_TEMPLATE";
@@ -32,7 +32,9 @@ test("the repository's security policy sends reports to email, not to a public i
   assert.ok(policy.includes(SECURITY_PAGE), `SECURITY.md must link ${SECURITY_PAGE}, which states the response times`);
   assert.match(policy, /do not (?:open|report [^.]* in) a public (?:GitHub )?issue/i, "SECURITY.md must say not to report a security problem in a public issue");
   assert.match(policy, /do not include student information/i, "SECURITY.md must say not to include student information");
-  assert.match(policy, /Morrow Desktop/, "SECURITY.md must name the products whose releases receive fixes");
+  assert.match(policy, /Morrow Bridge for Mac and Windows/, "SECURITY.md must name the products whose releases receive fixes");
+  assert.match(policy, /Security tab/, "SECURITY.md must send reporters to the Security tab");
+  assert.match(policy, /Report a vulnerability/, "SECURITY.md must name GitHub private vulnerability reporting");
   assert.match(policy, /Morrow for Muse/, "SECURITY.md must name the products whose releases receive fixes");
 });
 
