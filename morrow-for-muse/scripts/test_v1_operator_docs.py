@@ -14,6 +14,7 @@ sweep 2026-09-22):
      fact for every school.
   4. SKILL.md told the agent to have the educator "mint a fresh token"
      on a "PAT lane 401". v1 creates and uses no token (consent.md).
+     The unshipped PAT lane probe was removed. The session lane remains.
   5. SKILL.md said the legacy purge and wipe commands are "not shipped
      in the distribution"; they ship and run. The educator's deletion
      commands are privacy.executor_wire purge, purge-course, and

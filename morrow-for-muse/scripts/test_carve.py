@@ -464,7 +464,7 @@ def _catalog_citations(text):
 
 def test_shipped_docs_say_so_when_they_name_what_the_release_leaves_out():
     # known-6: transport/README.md and other shipped docs named files the
-    # carve drops (session/capture.py, lanes/detect.py, proof-battery
+    # carve drops (session/capture.py, proof-battery
     # evidence) as if they were there. A shipped doc may name one only
     # while saying it is not in the release. CHANGELOG.md is history.
     files, dirs = _left_out()

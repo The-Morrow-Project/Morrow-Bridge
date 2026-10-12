@@ -5,7 +5,7 @@ agent_error_payload(operation, raw_error) -> dict
 agent_error_text(operation, raw_error) -> str
 
 Every agent-facing error emission in the tree funnels through here
-(the executor CLI funnel, lanes/detect.py, reauth/state_machine.py
+(the executor CLI funnel and reauth/state_machine.py
 approve/notify refusals). The agent always sees the translated
 four-part message first (what was attempted / what the evidence showed
 / what it means / what happens next). Raw exception text may appear

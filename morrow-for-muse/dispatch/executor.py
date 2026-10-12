@@ -11213,8 +11213,9 @@ def build_parser():
                             "Chromium's authenticated tab via CDP on "
                             "127.0.0.1:19223 (same governance as https; the "
                             "browser owns the session, so no credential "
-                            "injection). https: raw-HTTPS executor (PAT lane; "
-                            "the cookie-jar replay was retired 2026-09-20).")
+                            "injection). https: raw-HTTPS rig executor ("
+                            "the cookie-jar replay was retired 2026-09-20). "
+                            "The session lane is the installed path.")
 
     def add_dry_run(p):
         p.add_argument("--dry-run", action="store_true",
