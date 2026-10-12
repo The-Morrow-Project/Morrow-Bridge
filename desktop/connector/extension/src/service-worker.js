@@ -60,7 +60,7 @@ import { executeMoodleBigBlueButtonInPage } from "./moodle-bbb-executor.js";
 import { executeMoodleSubsectionInPage } from "./moodle-subsection-executor.js";
 import { executeMoodleBackupInPage } from "./moodle-backup-executor.js";
 import { collectMoodleCourseParticipantRoster } from "./moodle-privacy.js";
-import { EDIT_PERMISSION_SCHEMA, EDIT_POLICY_SELECTION_LIMIT, categoriesForBinding, changedFields, createEditPermission, destructiveCategoryIds, guardedItemBankUpdate, migrateLegacyEditPermission, validEditPermission } from "./edit-policy.js";
+import { EDIT_PERMISSION_SCHEMA, EDIT_POLICY_SELECTION_LIMIT, categoriesForBinding, changedFields, createEditPermission, defaultEditCategoryIds, destructiveCategoryIds, guardedItemBankUpdate, migrateLegacyEditPermission, validEditPermission } from "./edit-policy.js";
 import { BridgeMaintenanceError, createBridgeMaintenance } from "./bridge-maintenance.js";
 import { MAX_BRIDGE_MESSAGE_BYTES, serializeBridgeResult } from "./bridge-transport.js";
 import { canvasProtectedRoster, protectLocalRequest, sourceProtectedRoster } from "./protected-request.js";
@@ -884,6 +884,16 @@ function httpUrl(path = "") {
   return `http://127.0.0.1:${PORT}${BRIDGE_PATH}${path}`;
 }
 
+// One frozen list per loaded catalog, so the Edit policy can keep what it derives from it.
+let catalogOperationList = { source: null, list: Object.freeze([]) };
+
+function catalogOperations() {
+  if (catalogOperationList.source !== state.operations) {
+    catalogOperationList = { source: state.operations, list: Object.freeze([...state.operations.values()]) };
+  }
+  return catalogOperationList.list;
+}
+
 async function storage() {
   return await chrome.storage.local.get(["token", "bindings", PAIRING_AUTHORITY_KEY, "siteAnchors", "editPolicies", "editPolicyRevisions", "firstCourseRead", "openPlatformWhenNeeded", "courseMeta", "courseAccessMode", "selectedCourseKeys", "accountCourseDiscovery"]);
 }
@@ -1434,7 +1444,7 @@ async function migrateLegacyEditPolicies(api) {
         legacyCatalogDigest: api.legacyCatalogDigest,
         catalogDigest: api.catalogDigest,
         policyRevision: revisions[sourceBindingId],
-        operations: [...state.operations.values()],
+        operations: catalogOperations(),
       });
       if (!migrated) continue;
       policies[sourceBindingId] = migrated;
@@ -1654,7 +1664,30 @@ function materializeBinding(binding, anchor) {
 async function editPermissionFor(binding, stored, api) {
   const permission = storedPolicies(stored.editPolicies)[binding.sourceBindingId];
   if (!permission) return null;
-  return await validEditPermission({ permission, binding, catalogDigest: api.catalogDigest, operations: [...state.operations.values()] });
+  return await validEditPermission({ permission, binding, catalogDigest: api.catalogDigest, operations: catalogOperations() });
+}
+
+// A course the person connects for the first time starts in Edit with the default categories. A
+// course with a recorded revision was set before, by the person or by an earlier Morrow, so it keeps
+// that state: this never widens a course that is in Plan. Account access does not use this: it can
+// add thousands of courses no one chose one by one, and a full grant per course does not scale.
+async function defaultEditPermission(binding, catalogDigest, priorRevision) {
+  if (priorRevision > 0) return null;
+  const operations = catalogOperations();
+  const enabledCategories = defaultEditCategoryIds(categoriesForBinding(binding, operations));
+  if (!enabledCategories.length) return null;
+  try {
+    return await createEditPermission({ binding, catalogDigest, revision: 1, enabledCategories, operations });
+  } catch {
+    return null;
+  }
+}
+
+function recordedPolicyRevision(sourceBindingId, policies, revisions) {
+  return Math.max(
+    Number.isSafeInteger(revisions[sourceBindingId]) ? revisions[sourceBindingId] : 0,
+    Number.isSafeInteger(policies[sourceBindingId]?.revision) ? policies[sourceBindingId].revision : 0,
+  );
 }
 
 function stalePermissionSummary(permission, binding, catalogDigest, operations) {
@@ -1867,7 +1900,7 @@ async function refreshBadge() {
   const stored = await storage();
   const api = await catalog();
   const policies = storedPolicies(stored.editPolicies);
-  const operations = [...state.operations.values()];
+  const operations = catalogOperations();
   let editCount = 0;
   let earliestExpiresAt = null;
   for (const binding of stored.bindings || []) {
@@ -2046,14 +2079,21 @@ async function editPolicyStatus(authorityGeneration = state.courseDataAuthorityG
   const stored = await storage();
   const published = new Map((await publicBindings()).map((binding) => [binding.sourceBindingId, binding]));
   const siteAnchors = await publicSiteAnchors(stored);
+  const defaultCategories = new Map();
+  const defaultCategoriesFor = (binding) => {
+    if (!defaultCategories.has(binding.provider)) defaultCategories.set(binding.provider, defaultEditCategoryIds(categoriesForBinding(binding, catalogOperations())));
+    return defaultCategories.get(binding.provider);
+  };
   const bindings = await Promise.all((stored.bindings || []).map(async (binding) => {
     const storedPermission = storedPolicies(stored.editPolicies)[binding.sourceBindingId];
-    const staleEditPermission = stalePermissionSummary(storedPermission, binding, api.catalogDigest, [...state.operations.values()]);
+    const staleEditPermission = stalePermissionSummary(storedPermission, binding, api.catalogDigest, catalogOperations());
     const current = published.get(binding.sourceBindingId);
     // The binding Morrow receives names its grant by digest only. Settings and the popup show which
     // actions the grant allows, so this status adds them from the stored grant that digest names.
     const enabledCategories = current?.editPermission && storedPermission?.scopeDigest === current.editPermission.scopeDigest
       && Array.isArray(storedPermission.enabledCategories) ? [...storedPermission.enabledCategories] : null;
+    const defaults = enabledCategories ? defaultCategoriesFor(binding) : [];
+    const allCourseEdits = defaults.length > 0 && enabledCategories.length === defaults.length && defaults.every((id) => enabledCategories.includes(id));
     return {
       sourceBindingId: binding.sourceBindingId,
       siteAnchorId: binding.siteAnchorId,
@@ -2069,6 +2109,7 @@ async function editPolicyStatus(authorityGeneration = state.courseDataAuthorityG
       editOptionsAvailable: current?.editOptionsAvailable === true,
       ...(current?.editPermission ? { editPermission: { ...current.editPermission, ...(enabledCategories ? { enabledCategories } : {}) } } : {}),
       ...(staleEditPermission ? { staleEditPermission: editPermissionSummary(staleEditPermission) } : {}),
+      ...(allCourseEdits ? { allCourseEdits: true } : {}),
     };
   }));
   await requireCourseDataAuthority(authorityGeneration);
@@ -2440,7 +2481,7 @@ async function saveEditPolicy(sourceBindingId, enabledCategories, authorityGener
     const policies = storedPolicies(stored.editPolicies);
     const revisions = storedPolicyRevisions(stored.editPolicyRevisions);
     const priorRevision = Math.max(Number.isSafeInteger(revisions[sourceBindingId]) ? revisions[sourceBindingId] : 0, Number.isSafeInteger(policies[sourceBindingId]?.revision) ? policies[sourceBindingId].revision : 0);
-    const editPermission = await createEditPermission({ binding, catalogDigest: api.catalogDigest, revision: priorRevision + 1, enabledCategories, operations: [...state.operations.values()] });
+    const editPermission = await createEditPermission({ binding, catalogDigest: api.catalogDigest, revision: priorRevision + 1, enabledCategories, operations: catalogOperations() });
     await setCourseDataBoundFields(chrome.storage.local, {
       editPolicies: { ...policies, [sourceBindingId]: editPermission },
       editPolicyRevisions: { ...revisions, [sourceBindingId]: editPermission.revision },
@@ -2672,7 +2713,7 @@ async function editPolicyOptions(sourceBindingId, authorityGeneration = state.co
     catalogDigest: api.catalogDigest,
     policyRevision,
     runtimeVerified,
-    options: categoriesForBinding(binding, [...state.operations.values()]),
+    options: categoriesForBinding(binding, catalogOperations()),
     ...(editPermission ? { editPermission } : {}),
   };
 }
@@ -2712,7 +2753,7 @@ async function applyBridgePolicySet(policySet, command) {
       }
       // A command from the Morrow socket never turns on an action that removes content. The person
       // turns those on in Plan and Edit settings, which saves through saveEditPolicy instead.
-      if (destructiveCategoryIds(selection.enabledCategories, binding, [...state.operations.values()]).length) {
+      if (destructiveCategoryIds(selection.enabledCategories, binding, catalogOperations()).length) {
         entries.push({ sourceBindingId: selection.sourceBindingId, state: permission ? "edit" : "plan", revision: priorRevision, ...(permission ? { editPermission: permission } : {}), code: "edit_policy_destructive_refused" });
         continue;
       }
@@ -2735,7 +2776,7 @@ async function applyBridgePolicySet(policySet, command) {
           catalogDigest: api.catalogDigest,
           revision: priorRevision + 1,
           enabledCategories,
-          operations: [...state.operations.values()],
+          operations: catalogOperations(),
           expiresAt,
         });
         nextPolicies[selection.sourceBindingId] = editPermission;
@@ -3010,6 +3051,7 @@ async function saveCourseSelection(siteAnchorId, discoveryReceiptId, courseIds, 
     || !Array.isArray(courseIds) || !courseIds.length || courseIds.length > DISCOVERY_PAGE_LIMIT) throw new Error("course_selection_invalid");
   const requestedIds = courseIds.map(decimalId);
   if (requestedIds.some((courseId) => !courseId) || new Set(requestedIds).size !== requestedIds.length) throw new Error("course_selection_invalid");
+  const api = await catalog();
   const result = await queueStorageMutation(async (lease) => {
     await requireCourseDataAuthority(authorityGeneration);
     const stored = await storage();
@@ -3028,6 +3070,8 @@ async function saveCourseSelection(siteAnchorId, discoveryReceiptId, courseIds, 
     if (!await siteAnchorMatches(anchor, { fresh: true, lease })) throw new Error("course_discovery_anchor_stale");
     const bindings = [...(stored.bindings || [])];
     const policies = { ...storedPolicies(stored.editPolicies) };
+    const revisions = { ...storedPolicyRevisions(stored.editPolicyRevisions) };
+    const granted = new Set();
     const added = [];
     for (const course of checked) {
       const existing = bindings.find((binding) => binding.siteAnchorId === anchor.siteAnchorId && binding.courseId === course.id);
@@ -3051,14 +3095,26 @@ async function saveCourseSelection(siteAnchorId, discoveryReceiptId, courseIds, 
         lastSeenAt: Date.now(),
       };
       bindings.push(binding);
-      delete policies[binding.sourceBindingId];
+      const permission = await defaultEditPermission(binding, api.catalogDigest, recordedPolicyRevision(binding.sourceBindingId, policies, revisions));
+      if (permission) {
+        policies[binding.sourceBindingId] = permission;
+        revisions[binding.sourceBindingId] = permission.revision;
+        granted.add(binding.sourceBindingId);
+      } else {
+        delete policies[binding.sourceBindingId];
+      }
       added.push(binding);
     }
     const courseMeta = nextCourseMeta(stored.courseMeta, anchor.origin, checked);
     const selected = selectedCourseKeys(stored);
     for (const binding of added) selected.add(courseAccessKey(binding));
-    await setCourseDataBoundFields(chrome.storage.local, { bindings, editPolicies: policies, courseMeta, selectedCourseKeys: [...selected] }, stored, authorityGeneration);
-    return { siteAnchorId: anchor.siteAnchorId, bindings: added.map(({ principalId: _principalId, siteAnchorId: _siteAnchorId, ...binding }) => binding) };
+    await setCourseDataBoundFields(chrome.storage.local, { bindings, editPolicies: policies, editPolicyRevisions: revisions, courseMeta, selectedCourseKeys: [...selected] }, stored, authorityGeneration);
+    return {
+      siteAnchorId: anchor.siteAnchorId,
+      bindings: added.map(({ principalId: _principalId, siteAnchorId: _siteAnchorId, ...binding }) => (
+        granted.has(binding.sourceBindingId) ? { ...binding, editPermission: editPermissionSummary(policies[binding.sourceBindingId]) } : binding
+      )),
+    };
   });
   await requireCourseDataAuthority(authorityGeneration);
   await publishBindings();
@@ -5721,7 +5777,7 @@ function withoutSessionCredentialSecrets(result, operation) {
 }
 
 function canvasOperationList() {
-  return [...state.operations.values()].filter((entry) => entry.provider === "canvas");
+  return catalogOperations().filter((entry) => entry.provider === "canvas");
 }
 
 /** The declared object-to-course binding for one Canvas write, with the object this call names. */
@@ -6133,7 +6189,7 @@ async function canvasRecoveryDescriptor(operation, args, writeData, result) {
   if (itemBank) return itemBank;
   try {
     return planCanvasRecoveryDescriptor(
-      [...state.operations.values()].filter((entry) => entry.provider === "canvas"),
+      catalogOperations().filter((entry) => entry.provider === "canvas"),
       operation,
       args,
       writeData,
@@ -6322,13 +6378,13 @@ async function sendExecution(command, binding, operation, privateAttachment, pri
     const namedCanvasReadback = operation.provider === "canvas" && isCanvasOperationReadback(operation);
     const semanticReadback = Boolean(semantic) && !guardedCanvasContent && !guardedPage && !guardedNewQuizSettings && !guardedNewQuizLifecycle && !guardedNewQuizItemLifecycle && !guardedNewQuizItemPosition && !privateConversation && !namedCanvasReadback;
     const namedPlan = namedCanvasReadback
-      ? planCanvasOperationReadback([...state.operations.values()].filter((entry) => entry.provider === "canvas"), operation, command.arguments || {}, result.data)
+      ? planCanvasOperationReadback(catalogOperations().filter((entry) => entry.provider === "canvas"), operation, command.arguments || {}, result.data)
       : null;
     // A sign-in token, a session, or a one-time action keeps no field afterwards that names what
     // changed, so no readback plan is built for one even when a route shape resembles a readable
     // one: the write is reported unconfirmed rather than checked against a meaningless read.
     const sessionCredentialWrite = operation.provider === "canvas" && typeof operation.path === "string" && canvasOperationAdmission(operation)?.siteClass === "session_credential";
-    const plan = guardedCanvasContent || guardedPage || guardedNewQuizSettings || guardedNewQuizLifecycle || guardedNewQuizItemLifecycle || guardedNewQuizItemPosition || newQuizResponseBound || guardedItemBank || privateConversation || privateCanvasCourseFileOperation(operation) || privateHotSpot || operation.provider !== "canvas" || namedCanvasReadback || semanticReadback || sessionCredentialWrite ? null : planBrowserReadback([...state.operations.values()].filter((entry) => entry.provider === "canvas"), operation, command.arguments || {}, result.data);
+    const plan = guardedCanvasContent || guardedPage || guardedNewQuizSettings || guardedNewQuizLifecycle || guardedNewQuizItemLifecycle || guardedNewQuizItemPosition || newQuizResponseBound || guardedItemBank || privateConversation || privateCanvasCourseFileOperation(operation) || privateHotSpot || operation.provider !== "canvas" || namedCanvasReadback || semanticReadback || sessionCredentialWrite ? null : planBrowserReadback(catalogOperations().filter((entry) => entry.provider === "canvas"), operation, command.arguments || {}, result.data);
     readDescriptor = genericCanvasWriteReadback(command, operation, privateConversation)
       ? await canvasRecoveryDescriptor(operation, command.arguments || {}, result.data, result)
       : null;
@@ -6899,7 +6955,7 @@ async function connectCourseTab(requestedTabId, expectedUrl, expectedCourseConne
         permission: editPolicies[prior.sourceBindingId],
         binding: prior,
         catalogDigest: api.catalogDigest,
-        operations: [...state.operations.values()],
+        operations: catalogOperations(),
       });
       const priorRevision = Math.max(
         Number.isSafeInteger(editPolicyRevisions[prior.sourceBindingId]) ? editPolicyRevisions[prior.sourceBindingId] : 0,
@@ -6913,7 +6969,7 @@ async function connectCourseTab(requestedTabId, expectedUrl, expectedCourseConne
           catalogDigest: api.catalogDigest,
           revision: permission.revision,
           enabledCategories: permission.enabledCategories,
-          operations: [...state.operations.values()],
+          operations: catalogOperations(),
           expiresAt: permission.expiresAt,
         });
       }

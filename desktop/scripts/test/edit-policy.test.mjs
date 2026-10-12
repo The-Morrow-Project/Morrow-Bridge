@@ -192,3 +192,39 @@ test("a saved grant that still carries an end time is honored until then, then l
   delete extended.expiresAt;
   assert.equal(await validEditPermission({ permission: extended, binding, catalogDigest: CATALOG_DIGEST, operations: moodleOperations }), null, "removing the end time must not validate as a grant with no end");
 });
+
+test("the default Edit for a new course leaves out removal, beyond-course, unchecked, and field-choice actions", () => {
+  const ids = editPolicy.defaultEditCategoryIds([
+    { id: "b", availability: "edit", destructive: false, reach: "course", verification: "checked" },
+    { id: "a", availability: "edit", destructive: false },
+    { id: "remove", availability: "edit", destructive: true },
+    { id: "site", availability: "edit", destructive: false, reach: "beyond" },
+    { id: "unchecked", availability: "edit", destructive: false, verification: "unchecked" },
+    { id: "fields", availability: "edit", destructive: false, requiresFieldSelection: true },
+    { id: "review", availability: "review", destructive: false },
+  ]);
+  assert.deepEqual(ids, ["a", "b"]);
+
+  const defaults = editPolicy.defaultEditCategoryIds(options);
+  assert.ok(defaults.length > 0);
+  assert.ok(defaults.includes("action:moodle:moodle_update_page"));
+  assert.ok(!defaults.includes("action:moodle:moodle_delete_book_chapter"));
+  assert.ok(!defaults.includes("action:moodle:moodle_delete_activity"));
+});
+
+test("the default Edit for a new course is a valid grant", async () => {
+  const permission = await createEditPermission({
+    binding,
+    catalogDigest: CATALOG_DIGEST,
+    revision: 1,
+    enabledCategories: editPolicy.defaultEditCategoryIds(options),
+    operations: moodleOperations,
+  });
+  assert.equal(permission.expiresAt, undefined);
+  assert.ok(await validEditPermission({ permission, binding, catalogDigest: CATALOG_DIGEST, operations: moodleOperations }));
+  const write = (operationKey, toolName, args) => matchesBridgeEditPermission(bridgeBinding(permission), {
+    provider: "moodle", catalogDigest: CATALOG_DIGEST, operationKey, toolName, arguments: args,
+  });
+  assert.equal(write("moodle.form.course.modedit.page.write.v1", "moodle_update_page", { course_id: 2, module_id: 7, name: "Cells", expected_digest: "d".repeat(64) }), true);
+  assert.equal(write("moodle.form.mod.book.chapter.delete.write.v1", "moodle_delete_book_chapter", { course_id: 2, module_id: 7, chapter_id: 31, expected_digest: "d".repeat(64) }), false);
+});

@@ -161,7 +161,7 @@ test("once Morrow is connected the popup names the course state and the one step
       primary: "Choose courses", primaryDisabled: false, primaryBusy: "false",
       secondary: null, openPlatform: null, disconnect: "Disconnect Morrow", planAndEdit: false, online: true,
       account: "Connected platform: Canvas",
-      detail: "Choose courses in Plan and Edit settings. Plan keeps changes ready for your review.",
+      detail: "Choose courses in Plan and Edit settings. A course you connect starts in Edit, within your own account's permissions. Choose Plan there to review every change first.",
     }],
     ["a selected course has no open tab", () => connection({ paired: true, connected: true, bindings: [binding({ runtimeVerified: false })], bindingCount: 1, siteAnchors: [anchor()] }), {
       connection: "Connected", courseLabel: "Connection", course: "Canvas is closed",

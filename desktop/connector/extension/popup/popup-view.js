@@ -30,6 +30,7 @@ export function courseStateText(binding) {
   const permission = binding?.editPermission;
   const ids = Array.isArray(permission?.enabledCategories) ? permission.enabledCategories.filter((id) => typeof id === "string") : [];
   if (!ids.length || permissionLapsed(permission)) return "Plan. Asks first.";
+  if (binding.allCourseEdits === true) return "Edit. All course edits.";
     const routineIds = ROUTINE_CATEGORY_IDS_BY_PROVIDER[binding.provider] || [];
   const isRoutine = routineIds.length > 0 && ids.length === routineIds.length && routineIds.every((id) => ids.includes(id));
   if (isRoutine) return "Edit. Routine edits.";
@@ -231,7 +232,7 @@ export function detailText(status, detectedProvider = null) {
             : anchor?.runtimeVerified === true
               ? status.courseAccessMode === "account"
                 ? "No courses are available from this account yet. Select Refresh courses to check again."
-                : "Choose courses in Plan and Edit settings. Plan keeps changes ready for your review."
+                : "Choose courses in Plan and Edit settings. A course you connect starts in Edit, within your own account's permissions. Choose Plan there to review every change first."
               : anchor
                 ? staleAnchorDetail(platform)
                 : platform

@@ -173,7 +173,7 @@ function readState(status) {
       text: readyCourses > 0
         ? `${readyCourses} ${accountAccess ? "available" : "selected"} ${readyCourses === 1 ? "course is" : "courses are"} ready`
         : readySites > 0
-          ? accountAccess ? `${platform || "Learning platform"} is ready; check available courses` : `${platform || "Learning platform"} is ready; select courses in Plan`
+          ? accountAccess ? `${platform || "Learning platform"} is ready; check available courses` : `${platform || "Learning platform"} is ready; select courses`
           : anchors.length > 0
             ? `Saved ${platform || "learning platform"} needs sign-in or reconnection`
             : "No Canvas or Moodle course is connected",
@@ -252,7 +252,7 @@ function readState(status) {
     title: status.courseAccessMode === "account" ? "Check available courses" : "Choose your course access",
     detail: status.courseAccessMode === "account"
       ? "Morrow has not found courses for this account. Select Refresh courses in the Morrow Bridge popup to check again."
-      : "Choose Selected courses to allow specific courses in Plan and Edit settings. Choose Account access to let your assistant work across the account's courses without selecting each one in Bridge. Plan keeps changes in review.",
+      : "Choose Selected courses to allow specific courses in Plan and Edit settings. Choose Account access to let your assistant work across the account's courses without selecting each one in Bridge. Selected courses start in Edit; choose Plan for a course to review each change first.",
     canOpenSettings: !accountAccess,
   };
   return {

@@ -303,7 +303,7 @@ test("course file access remains an explicit optional HTTPS permission", async (
 test("the Morrow Bridge popup names Plan and Edit as its destination and never a Course Connector", () => {
   const connectedWithSite = { paired: true, connected: true, runtimeHealthy: true, bindings: [], siteAnchors: [{ siteAnchorId: "canvas:site", runtimeVerified: true }] };
   assert.equal(primaryLabel(connectedWithSite), "Choose courses");
-  assert.equal(detailText(connectedWithSite), "Choose courses in Plan and Edit settings. Plan keeps changes ready for your review.");
+  assert.equal(detailText(connectedWithSite), "Choose courses in Plan and Edit settings. A course you connect starts in Edit, within your own account's permissions. Choose Plan there to review every change first.");
 
   const states = [null, {}, { paired: true }, { paired: true, pairing: true }, { paired: true, connecting: true },
     { paired: true, connected: true }, { paired: true, connected: true, runtimeHealthy: true }, connectedWithSite,
