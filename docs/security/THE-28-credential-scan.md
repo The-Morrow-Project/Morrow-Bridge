@@ -184,7 +184,30 @@ Each finding was read. None is a real or borrowed credential.
 
 ## Personal-mode tests
 
-PERSONAL_MODE_TESTS
+Morrow for Muse is the personal-mode product these removals touch. Its CI steps ran on ORNACIA
+(Python 3.12.12, hash-locked requirements), on this branch and on `origin/main` (`1b0bb8b`) as the
+baseline.
+
+| Step | Baseline `main` | This branch |
+|---|---|---|
+| `python -m pytest -q` | 2433 passed, 1 failed | 2421 passed, 2 failed |
+| `bash scripts/dev-suites.sh` | 22/22 suites pass | 21/21 suites pass (`session/cdp_selftest.py` removed) |
+| `carve.py` then `install-suites.sh` | 23/23 suites pass | 23/23 suites pass |
+| Repository gates (`check-repository` job, plus `ci-native-platforms.test.mjs`) | not run | 37/37 pass |
+
+The branch collects 11 fewer pytest tests (2423 against 2434): the deleted tests for the removed code. No failure comes from the
+removal:
+
+- Baseline `scripts/test_install_after_use.py::test_rerun_after_connecting_and_signing_in` timed out
+  waiting for a keepalive lock while both runs shared the host. It passed in the branch run.
+- Branch `bin/test_morrow.py::test_doctor_reads_no_auth_material` and
+  `test_failure_reads_no_auth_material` assert that no opened path contains the word
+  `credential`. The branch worktree directory was named `chore-the-28-credential-scan`. From a
+  checkout of the same commit at a neutral path, `bin/test_morrow.py` passes 53/53.
+
+Recovery after a Canvas sign-out stays on `reauth/state_machine.py resume`. Its tests
+(`reauth/test_principal_pin.py`, `reauth/test_approve_refusals.py`, `transport/test_principal_check.py`,
+`reauth/session_lifecycle_selftest.py` `t_resume_cmd`) pass on the branch.
 
 ## Limits
 
