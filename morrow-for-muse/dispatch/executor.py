@@ -1617,10 +1617,6 @@ class SessionStore:
                                   is_write=is_write, max_bytes=max_bytes)
 
 
-def inject_cookie_header(cookies: dict) -> str:
-    return "; ".join("%s=%s" % (k, v) for k, v in cookies.items())
-
-
 # --------------------------------------------------------------------------
 # Journal (append-only JSONL, op-id claims under an exclusive flock)
 #
@@ -4498,10 +4494,8 @@ def build_headers(entry: dict, headers_spec: dict, session: SessionStore,
             is_secret, material = _resolve_slot_with_alternates(
                 entry, session, slot)
             scheme = spec.get("scheme")
-            if isinstance(material, dict):
-                out[name] = inject_cookie_header(material)
-            else:
-                out[name] = ("%s %s" % (scheme, material)) if scheme else material
+            _refuse_cookie_material(slot, material)
+            out[name] = ("%s %s" % (scheme, material)) if scheme else material
         elif isinstance(spec, dict) and "session_value" in spec:
             slot = spec["session_value"]
             is_secret, material = session.slot_secret(slot)
@@ -4535,10 +4529,8 @@ def build_headers(entry: dict, headers_spec: dict, session: SessionStore,
                 out[header_name] = "***REDACTED***"
             else:
                 is_secret, material = _resolve_slot_with_alternates(entry, session, slot)
-                if isinstance(material, dict):
-                    out[header_name] = inject_cookie_header(material)
-                else:
-                    out[header_name] = ("%s %s" % (scheme, material)) if scheme else material
+                _refuse_cookie_material(slot, material)
+                out[header_name] = ("%s %s" % (scheme, material)) if scheme else material
         # Derived headers for session-cookie auth were a Model B mechanism
         # (X-CSRF-Token read from the stored _csrf_token cookie). Retired
         # 2026-09-20 with the cookie-jar slots: any pack still declaring a
@@ -4554,6 +4546,15 @@ def build_headers(entry: dict, headers_spec: dict, session: SessionStore,
     for _hn, _hv in out.items():
         validate_http_header(_hn, _hv, where="build_headers")
     return out
+
+
+def _refuse_cookie_material(slot, material):
+    """A cookie jar is never sent as a credential: cookie replay was retired
+    with Model B, and a dict here could only be a captured jar."""
+    if not isinstance(material, str):
+        raise ExecutorError(
+            "slot %r holds %s, not a token; cookie-jar replay is retired "
+            "with Model B" % (slot, type(material).__name__))
 
 
 def _resolve_slot_with_alternates(entry: dict, session: SessionStore, slot: str):

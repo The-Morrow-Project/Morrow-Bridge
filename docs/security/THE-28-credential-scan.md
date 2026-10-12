@@ -40,7 +40,8 @@ the helper's own tab and copies no cookie, so no working personal-mode flow used
 | `morrow-for-muse/bin/scheduler.py` | Canvas entry removed | It ran `keepalive-canvas.sh`. The Moodle entry is unchanged. |
 | `morrow-for-muse/reauth/wave5_resource_selftest.py`, `reauth/session_lifecycle_selftest.py`, `scripts/test_s4_install_lane.py` | Tests for the removed code removed | They tested `reauth()`, `_complete_reauth()`, and `keepalive-canvas.sh`. |
 | `morrow-for-muse/transport/local_chromium_selftest.py` | New check | The proxy allowlist must not contain `Network.getCookies`. |
-| `desktop/scripts/test/no-borrowed-credentials.test.mjs`, `.github/workflows/ci.yml` | New CI gate | Scans every tracked file for the markers below on every change, and fails if a removed path comes back. |
+| `morrow-for-muse/dispatch/executor.py` | `inject_cookie_header` removed; a non-string credential slot now fails closed | The rig HTTPS lane could still send a dict in `canvas.pat` as a `Cookie` header. |
+| `desktop/scripts/test/no-borrowed-credentials.test.mjs`, `.github/workflows/ci.yml` | New CI gate | Scans every tracked UTF-8 file, line by line, for the markers in this receipt and for CDP cookie reads and `Cookie` header replay (only the helper's expiry read and its tests are allowed), and fails if a removed path comes back. It does not see a marker built at run time or split across lines. |
 | `morrow-for-muse/scripts/carve.py`, `scripts/dev-suites.sh`, `scripts/test_package_shadowing.py`, `dispatch/integration_selftest.py`, `dispatch/executor.py`, `failures/catalog.json`, `DEPLOY.md`, `CHANGELOG.md`, `audit/*.md`, `moodle/session_selftest.py`, `desktop/scripts/test/ci-native-platforms.test.mjs` | References updated | They named the removed files. `carve.py` still denies `session/`, `lanes/`, and `qr-proof/`, so a restored copy cannot ship. |
 
 ## Scan commands and output
@@ -115,7 +116,7 @@ No output.
 ### 7. Patterns that hit, and why each hit is not a borrowed credential
 
 ```console
-$ git grep -n -I -E -e 'access_token=' -- .
+$ git grep -n -I -E -e 'access_token=' -- . "${X[@]}"
 morrow-for-muse/dispatch/executor.py:1407:    # query-string / form-ish: ?token=abc, &access_token=abc, ;session=abc
 ```
 
@@ -127,10 +128,11 @@ morrow-for-muse/helper/server.py:1327:        Reads cookie METADATA ONLY through
 morrow-for-muse/helper/server.py:1346:                    self.tab, "Network.getCookies", {"urls": [base]},
 ```
 
-The helper's session-expiry warning. It reads only the `expires` times on its private pipe and
+The helper's session-expiry warning, on its private pipe. CDP returns full cookie objects into
+the helper's memory; the helper uses only the `expires` times and the count, and logs, stores, or
 returns no cookie name or value. The proxy allowlist no longer contains this method.
 
-`git grep -i -F 'New Access Token'` hits 4 files: the Canvas API catalog description of
+`git grep -i -F 'New Access Token' -- . "${X[@]}"` hits 4 files: the Canvas API catalog description of
 `POST /v1/users/{user_id}/tokens` (2 generated copies) and Blackboard comments about OAuth token
 renewal. That Canvas route is an official API write in the user's own signed-in session. Admission
 classes it as a `session_credential` site-authority write (`operation-admission.ts`,
@@ -190,12 +192,12 @@ baseline.
 
 | Step | Baseline `main` | This branch |
 |---|---|---|
-| `python -m pytest -q` | 2433 passed, 1 failed | 2421 passed, 2 failed |
+| `python -m pytest -q` | 2433 passed, 1 failed, 1 skipped | 2421 passed, 2 failed, 1 skipped |
 | `bash scripts/dev-suites.sh` | 22/22 suites pass | 21/21 suites pass (`session/cdp_selftest.py` removed) |
 | `carve.py` then `install-suites.sh` | 23/23 suites pass | 23/23 suites pass |
 | Repository gates (`check-repository` job, plus `ci-native-platforms.test.mjs`) | not run | 37/37 pass |
 
-The branch collects 11 fewer pytest tests (2423 against 2434): the deleted tests for the removed code. No failure comes from the
+The branch collects 11 fewer pytest tests (2424 against 2435, skipped tests included): the deleted tests for the removed code. No failure comes from the
 removal:
 
 - Baseline `scripts/test_install_after_use.py::test_rerun_after_connecting_and_signing_in` timed out
