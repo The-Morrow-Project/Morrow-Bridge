@@ -206,7 +206,7 @@ connection.
 
 The popup reads the current Bridge state, then uses a read-only active-tab probe when it needs to
 name the active signed-in platform. The probe returns only `canvas`, `moodle`, or no match; it saves
-no course or account value (`connector/extension/src/service-worker.js:3667`).
+no course or account value (`connector/extension/src/service-worker.js:3682`).
 
 Every control is a native button. A control that does not apply is hidden, which removes it from the
 tab order (`connector/extension/popup/popup.js:60`). The help disclosure uses the same three stages as the app and website:
@@ -302,7 +302,7 @@ instead of a second one being opened (`connector/extension/popup/popup.js:68-75`
 opens a review tab by itself; the person always starts from a click here or from the link the
 assistant gave them. The runtime supplies this list only after a review's state changes; a source not
 in this card's files, `connector/extension/src/service-worker.js`, must add `reviews` to the object its
-`status()` function answers (`connector/extension/src/service-worker.js:6033`) before this list is
+`status()` function answers (`connector/extension/src/service-worker.js:6048`) before this list is
 populated outside a test.
 
 ---
@@ -401,9 +401,9 @@ that has never read a course is not ready
 | --- | --- | --- |
 | `assistant-check` | The connection the person made with **Pair Morrow**. Morrow Bridge cannot see the assistant window itself, and the line says so | `connector/extension/onboarding/onboarding.html:42` |
 | `connection-check` | Whether Morrow Bridge holds an open connection to Morrow | `connector/extension/onboarding/onboarding.html:43` |
-| `runtime-check` | Whether the Morrow this connection reached is the same build as this extension. Morrow names the connector identity it accepted, and the status read compares it with this extension, this connector revision and this exact list of course actions (`connector/extension/src/service-worker.js:2513-2481`) | `connector/extension/onboarding/onboarding.html:44` |
+| `runtime-check` | Whether the Morrow this connection reached is the same build as this extension. Morrow names the connector identity it accepted, and the status read compares it with this extension, this connector revision and this exact list of course actions (`connector/extension/src/service-worker.js:2528-2481`) | `connector/extension/onboarding/onboarding.html:44` |
 | `course-check` | How many selected courses are ready in this Chrome session | `connector/extension/onboarding/onboarding.html:45` |
-| `read-check` | The course of the last read that returned. The service worker records the course and the time after a read answers ok, and replaces the record when a read succeeds in a different course (`connector/extension/src/service-worker.js:2106-2082`) | `connector/extension/onboarding/onboarding.html:46` |
+| `read-check` | The course of the last read that returned. The service worker records the course and the time after a read answers ok, and replaces the record when a read succeeds in a different course (`connector/extension/src/service-worker.js:2121-2082`) | `connector/extension/onboarding/onboarding.html:46` |
 
 Every line the five checks can render:
 

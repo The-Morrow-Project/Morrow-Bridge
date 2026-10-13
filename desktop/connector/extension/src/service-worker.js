@@ -1690,6 +1690,21 @@ function recordedPolicyRevision(sourceBindingId, policies, revisions) {
   );
 }
 
+// Revisions are keyed by site anchor, and pairing the same account again makes a new anchor whose
+// id keeps the same provider and account digest prefix. A course set before under any anchor of
+// this account, including one disconnected before the account was paired again, keeps Plan.
+function courseHistoryRevision(anchor, courseId, policies, revisions) {
+  const account = `${anchor.siteAnchorId.split(":").slice(0, 2).join(":")}:`;
+  const course = `:c${courseId}`;
+  let revision = 0;
+  for (const sourceBindingId of new Set([...Object.keys(revisions), ...Object.keys(policies)])) {
+    if (sourceBindingId.startsWith(account) && sourceBindingId.endsWith(course)) {
+      revision = Math.max(revision, recordedPolicyRevision(sourceBindingId, policies, revisions));
+    }
+  }
+  return revision;
+}
+
 function stalePermissionSummary(permission, binding, catalogDigest, operations) {
   if (!permission || typeof permission !== "object") return null;
   const available = new Set(categoriesForBinding(binding, operations).filter((category) => category.availability === "edit").map((category) => category.id));
@@ -3095,7 +3110,7 @@ async function saveCourseSelection(siteAnchorId, discoveryReceiptId, courseIds, 
         lastSeenAt: Date.now(),
       };
       bindings.push(binding);
-      const permission = await defaultEditPermission(binding, api.catalogDigest, recordedPolicyRevision(binding.sourceBindingId, policies, revisions));
+      const permission = await defaultEditPermission(binding, api.catalogDigest, courseHistoryRevision(anchor, course.id, policies, revisions));
       if (permission) {
         policies[binding.sourceBindingId] = permission;
         revisions[binding.sourceBindingId] = permission.revision;

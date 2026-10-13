@@ -1725,6 +1725,31 @@ async function recordedPlanCourseStaysInPlanScenario() {
   assert.equal(result.result.bindings[0].editPermission, undefined);
 }
 
+async function repairedAccountKeepsPlanScenario() {
+  const value = fixture({ tabMessage: courseCheck([{ id: "43", name: "Chemistry" }]) });
+  // The person set course 43 to Plan, disconnected it, and paired the same account again, so its
+  // revision is under the earlier anchor of this account. Other accounts and other courses do not count.
+  value.local.values.editPolicyRevisions = { "canvas:account:g0:c43": 2 };
+  const receiptId = "discovery:repaired-account";
+  value.session.values.courseDiscoveries = { [receiptId]: selectionReceipt(receiptId, [{ id: "43", name: "Chemistry" }]) };
+  await importWorker("repaired-account-plan");
+  const result = await sendRuntime(value, { type: "morrow_course_selection_save", siteAnchorId: anchorId, discoveryReceiptId: receiptId, courseIds: ["43"] }, settingsSender());
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(value.local.values.editPolicies[`${anchorId}:c43`], undefined);
+  assert.equal(result.result.bindings[0].editPermission, undefined);
+}
+
+async function otherAccountHistoryIgnoredScenario() {
+  const value = fixture({ tabMessage: courseCheck([{ id: "43", name: "Chemistry" }]) });
+  value.local.values.editPolicyRevisions = { "canvas:other:g1:c43": 2, "canvas:account:g0:c143": 4 };
+  const receiptId = "discovery:other-account";
+  value.session.values.courseDiscoveries = { [receiptId]: selectionReceipt(receiptId, [{ id: "43", name: "Chemistry" }]) };
+  await importWorker("other-account-history");
+  const result = await sendRuntime(value, { type: "morrow_course_selection_save", siteAnchorId: anchorId, discoveryReceiptId: receiptId, courseIds: ["43"] }, settingsSender());
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.ok(value.local.values.editPolicies[`${anchorId}:c43`], "another account's or another course's history does not keep this course in Plan");
+}
+
 async function accountCourseStartsInPlanScenario() {
   const value = fixture({
     tabMessage: async ({ message }) => {
@@ -2309,6 +2334,8 @@ const scenarios = {
   "new-course-edit": newCourseStartsInEditScenario,
   "recorded-plan-course": recordedPlanCourseStaysInPlanScenario,
   "account-course-plan": accountCourseStartsInPlanScenario,
+  "repaired-account-plan": repairedAccountKeepsPlanScenario,
+  "other-account-history": otherAccountHistoryIgnoredScenario,
   "settings-selection-consent": settingsSelectionConsentScenario,
   "settings-policy-consent": settingsPolicyConsentScenario,
   "pairing-proof": pairingProofScenario,
@@ -2391,6 +2418,14 @@ test("a newly allowed course starts in Edit with every course edit except remova
 
 test("allowing a course again keeps the Plan it had before", async () => {
   await isolatedScenario("recorded-plan-course");
+});
+
+test("a course set before under an earlier pairing of the same account keeps Plan", async () => {
+  await isolatedScenario("repaired-account-plan");
+});
+
+test("another account's or another course's history does not keep a new course in Plan", async () => {
+  await isolatedScenario("other-account-history");
 });
 
 test("a course that Account access adds stays in Plan", async () => {

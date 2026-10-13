@@ -210,6 +210,8 @@ test("the default Edit for a new course leaves out removal, beyond-course, unche
   assert.ok(defaults.includes("action:moodle:moodle_update_page"));
   assert.ok(!defaults.includes("action:moodle:moodle_delete_book_chapter"));
   assert.ok(!defaults.includes("action:moodle:moodle_delete_activity"));
+  assert.equal(option("moodle_copy_course").availability, "edit");
+  assert.ok(!defaults.includes("action:moodle:moodle_copy_course"), "copying a course creates a course outside the connected one");
 });
 
 test("the default Edit for a new course is a valid grant", async () => {
@@ -227,4 +229,9 @@ test("the default Edit for a new course is a valid grant", async () => {
   });
   assert.equal(write("moodle.form.course.modedit.page.write.v1", "moodle_update_page", { course_id: 2, module_id: 7, name: "Cells", expected_digest: "d".repeat(64) }), true);
   assert.equal(write("moodle.form.mod.book.chapter.delete.write.v1", "moodle_delete_book_chapter", { course_id: 2, module_id: 7, chapter_id: 31, expected_digest: "d".repeat(64) }), false);
+  const copy = moodleOperations.find((entry) => entry.toolName === "moodle_copy_course");
+  const copyArgs = { course_id: 2, new_full_name: "Copy", new_short_name: "COPY", category_id: 1, acknowledge_new_course: true, expected_digest: "d".repeat(64) };
+  assert.equal(write(copy.key, copy.toolName, copyArgs), false, "the default grant does not authorize copying the course");
+  const withCopy = await createEditPermission({ binding, catalogDigest: CATALOG_DIGEST, revision: 1, enabledCategories: ["action:moodle:moodle_copy_course"], operations: moodleOperations });
+  assert.equal(matchesBridgeEditPermission(bridgeBinding(withCopy), { provider: "moodle", catalogDigest: CATALOG_DIGEST, operationKey: copy.key, toolName: copy.toolName, arguments: copyArgs }), true, "a grant that names the copy authorizes it, so the refusal above is the default's own");
 });

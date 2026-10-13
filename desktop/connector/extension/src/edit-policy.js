@@ -1020,9 +1020,14 @@ export function categoriesForBinding(binding, operations) {
  * confirm each of those before it joins a grant. Takes public categories, so settings can derive
  * the same list from the options it already reads.
  */
+// Copying a Moodle course creates a separate course on the site, outside the connected one. Its
+// catalog reach stays "course", because its source is the connected course, so the default names it.
+const DEFAULT_EDIT_EXCLUDED_CATEGORY_IDS = new Set(["action:moodle:moodle_copy_course"]);
+
 export function defaultEditCategoryIds(categories) {
   return (Array.isArray(categories) ? categories : [])
     .filter((category) => category?.availability === "edit" && category.destructive !== true
+      && !DEFAULT_EDIT_EXCLUDED_CATEGORY_IDS.has(category.id)
       && category.verification !== "unchecked" && category.requiresFieldSelection !== true && category.reach !== "beyond")
     .map((category) => category.id)
     .sort();
