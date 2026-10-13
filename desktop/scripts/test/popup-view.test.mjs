@@ -176,6 +176,8 @@ test("courseStateText keeps D7's own wording, from the edit permission alone", (
 
   assert.equal(courseStateText({ provider: "canvas" }), "Plan. Asks first.", "no permission at all");
   assert.equal(courseStateText({ provider: "canvas", editPermission: { enabledCategories: [] } }), "Plan. Asks first.", "an empty selection");
+  assert.equal(courseStateText({ provider: "canvas", allCourseEdits: true, editPermission: { enabledCategories: ["canvas_pages_text"] } }), "Edit. All course edits.", "the Edit a new course starts with");
+  assert.equal(courseStateText({ provider: "canvas", allCourseEdits: true, editPermission: { enabledCategories: [] } }), "Plan. Asks first.", "no grant is never Edit");
   assert.equal(
     courseStateText({ provider: "canvas", editPermission: { enabledCategories: canvasRoutineIds, expiresAt: Date.now() - 1 } }),
     "Plan. Asks first.",

@@ -57,6 +57,7 @@ function harness({ reviewsWaiting, bindings = [], editValidity = {} } = {}) {
     `let state = { ${reviewsWaiting === undefined ? "" : `reviewsWaiting: ${JSON.stringify(reviewsWaiting)},`} operations: new Map() };`,
     "async function storage() { return { bindings, editPolicies: {} }; }",
     "async function catalog() { return { catalogDigest: 'fixture-digest' }; }",
+    "function catalogOperations() { return Object.freeze([...state.operations.values()]); }",
     "async function validEditPermission({ permission, binding, catalogDigest, operations }) {",
     "  calls.validEditPermission.push({ sourceBindingId: binding.sourceBindingId, catalogDigest });",
     "  const result = editValidity[binding.sourceBindingId];",

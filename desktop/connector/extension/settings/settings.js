@@ -1,6 +1,6 @@
 import { problemCode, problemText } from "../src/bridge-problem-copy.js";
 import { COURSE_DATA_CONSENT_KEY, hasCourseDataConsent } from "../src/course-data-consent.js";
-import { CURATED_CATEGORY_SPECS } from "../src/edit-policy.js";
+import { CURATED_CATEGORY_SPECS, defaultEditCategoryIds } from "../src/edit-policy.js";
 
 const modePanel = document.querySelector("#mode-panel");
 const modePlan = document.querySelector("#mode-plan");
@@ -1244,6 +1244,7 @@ const ROUTINE_CATEGORY_IDS_BY_PROVIDER = CURATED_CATEGORY_SPECS.filter((spec) =>
 function courseStateText(binding) {
   const ids = Array.isArray(binding?.editPermission?.enabledCategories) ? binding.editPermission.enabledCategories.filter((id) => typeof id === "string") : [];
   if (!ids.length || permissionHasExpired(binding) || isStale(binding)) return "Plan. Asks first.";
+  if (binding.allCourseEdits === true) return "Edit. All course edits.";
   const routineIds = ROUTINE_CATEGORY_IDS_BY_PROVIDER[binding.provider] || [];
   const isRoutine = routineIds.length > 0 && ids.length === routineIds.length && routineIds.every((id) => ids.includes(id));
   if (isRoutine) return "Edit. Routine edits.";
@@ -1251,13 +1252,14 @@ function courseStateText(binding) {
   return "Edit. Custom.";
 }
 
-/** WI-5.4: "plan" | "routine" | "custom", for the detail's Plan/Edit control and its third "Custom"
+/** WI-5.4: "plan" | "all" | "routine" | "custom", for the detail's Plan/Edit control and its third "Custom"
  * chip (shown only for "custom": the saved list is not a level). Reads only the saved summary
  * (binding.editPermission), the same source courseStateText (D7) reads, so opening a course's
  * detail needs no options fetch to show its current level. */
 function courseLevel(binding) {
   const ids = Array.isArray(binding?.editPermission?.enabledCategories) ? binding.editPermission.enabledCategories.filter((id) => typeof id === "string") : [];
   if (!ids.length || permissionHasExpired(binding) || isStale(binding)) return "plan";
+  if (binding.allCourseEdits === true) return "all";
   const routineIds = ROUTINE_CATEGORY_IDS_BY_PROVIDER[binding.provider] || [];
   const isRoutine = routineIds.length > 0 && ids.length === routineIds.length && routineIds.every((id) => ids.includes(id));
   return isRoutine ? "routine" : "custom";
@@ -1347,8 +1349,10 @@ function renderCourseDetail(binding, isOpen) {
   const detailId = courseDetailDomId(binding.sourceBindingId);
   if (!isOpen) return `<div class="course-detail morrow-panel" id="${escapeHtml(detailId)}"></div>`;
   const level = courseLevel(binding);
-  const ids = level === "plan" ? [] : (Array.isArray(binding?.editPermission?.enabledCategories) ? binding.editPermission.enabledCategories.filter((value) => typeof value === "string") : []);
-  const lead = level === "routine"
+  const ids = level === "plan" || level === "all" ? [] : (Array.isArray(binding?.editPermission?.enabledCategories) ? binding.editPermission.enabledCategories.filter((value) => typeof value === "string") : []);
+  const lead = level === "all"
+    ? "Morrow makes every change this course offers in Edit without another approval, within what your own account can do, until you choose Plan. It still asks before changes that remove content, reach beyond this course, or cannot be checked after they are saved. To narrow this, choose Routine edits or Plan above, or select Customize."
+    : level === "routine"
     ? `Morrow makes the routine edits below without another approval until you choose Plan. ${routineAsks([binding.provider])}`
     : level === "custom"
       ? "Morrow makes the changes you selected in Customize until you choose Plan. It asks before every other change."
@@ -1363,6 +1367,7 @@ function renderCourseDetail(binding, isOpen) {
       <div class="course-detail-top">
         <div class="course-level-control" role="group" aria-label="Level for ${escapeHtml(courseName(binding))}">
           <button type="button" class="secondary" data-set-level="plan" aria-pressed="${level === "plan"}" ${state.busy ? "disabled" : ""}>Plan. Morrow asks first.</button>
+          <button type="button" class="secondary" data-set-level="all" aria-pressed="${level === "all"}" ${state.busy ? "disabled" : ""}>Edit. All course edits.</button>
           <button type="button" class="secondary" data-set-level="routine" aria-pressed="${level === "routine"}" ${state.busy ? "disabled" : ""}>Edit. Routine edits.</button>
           ${level === "custom" ? `<button type="button" class="secondary" aria-pressed="true" data-open-customize="1">Custom</button>` : ""}
         </div>
@@ -2151,6 +2156,25 @@ async function setCourseRoutine(binding) {
   await saveCourseCategories(binding, ids, `Routine edits are on for ${courseName(binding)}. They stay on until you choose Plan.`);
 }
 
+/** The detail's own "Edit. All course edits." button: the same Edit a newly allowed course starts
+ * with, for this one course only. */
+async function setCourseAllEdits(binding) {
+  if (state.busy || courseLevel(binding) === "all") return;
+  clearError();
+  clearNotice();
+  if (!(await ensureBindingOptions(binding))) {
+    render();
+    return;
+  }
+  const ids = defaultEditCategoryIds(optionsFor(binding)?.options);
+  if (!ids.length) {
+    showError("edit_policy_category_unavailable");
+    render();
+    return;
+  }
+  await saveCourseCategories(binding, ids, `All course edits are on for ${courseName(binding)}. They stay on until you choose Plan.`);
+}
+
 /** WI-5.4: "Remove" saves the list without that category. The last category
  * removed leaves nothing to save (morrow_edit_policy_save refuses an empty list), so the course
  * returns to Plan instead, exactly what an empty allowed list means everywhere else (D7). */
@@ -2384,7 +2408,12 @@ async function connectCourse(course) {
         if (reread || (code !== "course_discovery_receipt_missing" && code !== "course_discovery_receipt_stale")) throw cause;
       }
     }
-    if (connectedResult) showNotice(`${course.courseName} is connected in Plan. Morrow asks before each change.`);
+    if (connectedResult) {
+      const added = (connectedResult.bindings || []).find((binding) => nativeCourseId(binding?.courseId) === course.courseId);
+      showNotice(added?.editPermission
+        ? `${course.courseName} is connected in Edit. Morrow makes changes your account can make there, and asks before changes that remove content. Choose Plan in its details to review every change first.`
+        : `${course.courseName} is connected in Plan. Morrow asks before each change.`);
+    }
   } catch (cause) {
     showError(cause);
   } finally {
@@ -2604,7 +2633,10 @@ courseList.addEventListener("click", (event) => {
   const levelButton = event.target.closest("[data-set-level]");
   if (levelButton) {
     const binding = bindingById(levelButton.closest("[data-binding-id]")?.dataset.bindingId);
-    if (binding) void (levelButton.dataset.setLevel === "plan" ? setCoursePlan(binding) : setCourseRoutine(binding));
+    if (binding) {
+      const level = levelButton.dataset.setLevel;
+      void (level === "plan" ? setCoursePlan(binding) : level === "all" ? setCourseAllEdits(binding) : setCourseRoutine(binding));
+    }
     return;
   }
   const customizeButton = event.target.closest("[data-open-customize]");

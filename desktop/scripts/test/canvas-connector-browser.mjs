@@ -1871,16 +1871,35 @@ try {
   assert.equal(canvas.courseDiscoveryUrls().length, discoveryUrlsBeforeCursorChecks + 1, "only the valid continuation after page 100 can reach the provider");
   process.stderr.write("[browser-test] Canvas discovery refuses foreign, malformed, credentialed, fragmented, oversized and repeated cursors, and continues beyond page 100\n");
   const courseSelectionName = (name, courseId) => `Select Canvas course ${name} (course ID ${courseId})`;
-  const connectAvailableCourse = async (name, filter) => {
+  const connectAvailableCourse = async (name, filter, level = "Edit") => {
     await settings.locator("#course-filter").fill(filter);
     await settings.getByRole("button", { name: `Connect Canvas course ${name}`, exact: true }).click();
-    await settings.locator("#notice").filter({ hasText: `${name} is connected in Plan. Morrow asks before each change.` }).waitFor();
+    await settings.locator("#notice").filter({ hasText: level === "Edit"
+      ? `${name} is connected in Edit. Morrow makes changes your account can make there, and asks before changes that remove content. Choose Plan in its details to review every change first.`
+      : `${name} is connected in Plan. Morrow asks before each change.` }).waitFor();
     await waitFor(async () => await settings.locator("#refresh").isEnabled(), `settings stayed busy after ${name} connected`);
     await settings.locator("#course-filter").fill("");
   };
-  // Each available course connects by itself, in Plan, from the list the site already returned.
+  // Each available course connects by itself, in Edit, from the list the site already returned.
   await connectAvailableCourse("Introduction to Human Biology", "Introduction to Human Biology");
   await connectAvailableCourse("Synthetic Human Anatomy", "Synthetic Human Anatomy");
+  // A new course starts with all course edits, and its own Plan button narrows it at once. The
+  // checks below start from Plan, as a person who wants every change reviewed would.
+  for (const [courseId, name] of [["42", "Introduction to Human Biology"], ["43", "Synthetic Human Anatomy"]]) {
+    await settings.locator("#course-filter").fill(name);
+    const row = settings.locator(`[data-toggle-course$=":c${courseId}"]`);
+    const state = settings.locator(`.course-row[data-binding-id$=":c${courseId}"] .course-row-state`);
+    await state.filter({ hasText: "Edit. All course edits." }).waitFor();
+    await row.click();
+    const detail = settings.locator(`.course-detail.is-open[data-binding-id$=":c${courseId}"]`);
+    assert.equal(await detail.locator('[data-set-level="all"]').getAttribute("aria-pressed"), "true");
+    await detail.locator('[data-set-level="plan"]').click();
+    await settings.locator("#notice").filter({ hasText: `${name} is in Plan. Morrow asks first.` }).waitFor();
+    await state.filter({ hasText: "Plan. Asks first." }).waitFor();
+    if (await row.getAttribute("aria-expanded") === "true") await row.click();
+    await settings.locator("#course-filter").fill("");
+  }
+  process.stderr.write("[browser-test] a newly connected course starts in Edit with all course edits, and its own Plan button returns it to Plan\n");
   assert.equal(canvas.courseDiscoveryUrls().length, discoveryUrlsBeforeCursorChecks + 1, "connecting from a current list must not read the list again");
   await settings.locator(".listhead", { hasText: "Connected · 2" }).waitFor();
   const readDiscoveryPage = async () => await settings.evaluate(async () => {
@@ -1932,9 +1951,11 @@ try {
     const revision = Object.entries(stored.editPolicyRevisions || {}).find(([id]) => id.endsWith(":c501"))?.[1];
     return { courseIds: (stored.bindings || []).map((entry) => entry.courseId).sort(), anchors: (stored.siteAnchors || []).length, revision };
   });
-  assert.deepEqual(disconnectedState, { courseIds: ["42", "43"], anchors: 1, revision: 1 }, "Disconnect must keep the site and the other courses, and raise the course's policy revision");
-  // The disconnected course is available again, and connects again from the same list.
-  await connectAvailableCourse(LONG_COURSE_NAME, "Evidence-Based Practice");
+  // The course connected in Edit at revision 1, so Disconnect raises it to 2.
+  assert.deepEqual(disconnectedState, { courseIds: ["42", "43"], anchors: 1, revision: 2 }, "Disconnect must keep the site and the other courses, and raise the course's policy revision");
+  // The disconnected course is available again, and connects again from the same list. Its
+  // recorded revision means it was set before, so connecting it again keeps Plan.
+  await connectAvailableCourse(LONG_COURSE_NAME, "Evidence-Based Practice", "Plan");
   process.stderr.write("[browser-test] one course disconnects after one confirmation, Keep course keeps it, and it can connect again\n");
   await settings.locator(".listhead", { hasText: "Connected · 3" }).waitFor();
   const bindings = await waitFor(() => runtime.bridge.listBindings().length === 3 ? runtime.bridge.listBindings() : null, "selected Canvas courses did not bind to the shared site anchor");

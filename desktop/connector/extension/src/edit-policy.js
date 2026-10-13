@@ -945,9 +945,22 @@ export function curatedAvailability(spec, operations, canvasReads) {
   return supported ? { availability: "edit" } : null;
 }
 
+// Every course on one provider derives the same specs from one catalog, and a grant is validated
+// each time its course is published, so a frozen catalog list keeps the specs it produced. A list
+// that is not frozen can change in place and is derived again on every call.
+const specsByFrozenCatalog = new WeakMap();
+
 function categorySpecsForBinding(binding, operations) {
   const provider = binding?.provider;
   if (provider !== "canvas" && provider !== "moodle") return [];
+  if (!Array.isArray(operations) || !Object.isFrozen(operations)) return deriveCategorySpecs(provider, operations);
+  let byProvider = specsByFrozenCatalog.get(operations);
+  if (!byProvider) specsByFrozenCatalog.set(operations, byProvider = new Map());
+  if (!byProvider.has(provider)) byProvider.set(provider, deriveCategorySpecs(provider, operations));
+  return byProvider.get(provider);
+}
+
+function deriveCategorySpecs(provider, operations) {
   const canvasReads = canvasReadOperations(operations);
   const curated = CURATED_CATEGORY_SPECS.filter((spec) => spec.provider === provider).map((spec) => {
     const availability = curatedAvailability(spec, operations, canvasReads);
@@ -999,6 +1012,34 @@ export function categoriesForBinding(binding, operations) {
   return categorySpecsForBinding(binding, operations).map(publicCategory);
 }
 
+/**
+ * The Edit a newly allowed course starts with: every change the course offers as a standing grant,
+ * so Morrow can do what the person's own Canvas or Moodle account can do there. A change that
+ * removes content, reaches beyond the course, cannot be checked after it is saved, or grants
+ * nothing without a field choice is left out, because Plan and Edit settings asks the person to
+ * confirm each of those before it joins a grant. Takes public categories, so settings can derive
+ * the same list from the options it already reads.
+ */
+// Copying a Moodle course creates a separate course on the site, outside the connected one. Its
+// catalog reach stays "course", because its source is the connected course, so the default names it.
+const DEFAULT_EDIT_EXCLUDED_CATEGORY_IDS = new Set(["action:moodle:moodle_copy_course"]);
+// A change to an existing Item Bank can reach every quiz, in every course, that draws from the bank,
+// and sharing one gives another course access to it. Canvas gives no complete list of those
+// courses, so each such change carries the person's acknowledgement of the courses Morrow observed.
+// Only creating a new bank, which no other course uses yet, joins the default.
+const DEFAULT_EDIT_ITEM_BANK_PREFIX = "action:canvas:canvas_item_bank_";
+const DEFAULT_EDIT_ITEM_BANK_ALLOWED = new Set(["action:canvas:canvas_item_bank_create_bank"]);
+
+export function defaultEditCategoryIds(categories) {
+  return (Array.isArray(categories) ? categories : [])
+    .filter((category) => category?.availability === "edit" && category.destructive !== true
+      && !DEFAULT_EDIT_EXCLUDED_CATEGORY_IDS.has(category.id)
+      && (!String(category.id).startsWith(DEFAULT_EDIT_ITEM_BANK_PREFIX) || DEFAULT_EDIT_ITEM_BANK_ALLOWED.has(category.id))
+      && category.verification !== "unchecked" && category.requiresFieldSelection !== true && category.reach !== "beyond")
+    .map((category) => category.id)
+    .sort();
+}
+
 /** The selected category ids whose actions remove course content on this course connection. */
 export function destructiveCategoryIds(enabledCategories, binding, operations) {
   const available = new Map(categorySpecsForBinding(binding, operations).map((spec) => [spec.id, spec]));
@@ -1015,7 +1056,21 @@ function selectedCategories(enabledCategories, binding, operations) {
   return { selected, specs };
 }
 
+const operationIndexByFrozenCatalog = new WeakMap();
+
 function ruleOperation(operations, rule) {
+  if (Array.isArray(operations) && Object.isFrozen(operations)) {
+    let index = operationIndexByFrozenCatalog.get(operations);
+    if (!index) {
+      index = new Map();
+      for (const entry of operations) {
+        const key = `${entry?.key}\u0000${entry?.toolName}`;
+        if (!index.has(key)) index.set(key, entry);
+      }
+      operationIndexByFrozenCatalog.set(operations, index);
+    }
+    return index.get(`${rule.operationKey}\u0000${rule.toolName}`);
+  }
   return (Array.isArray(operations) ? operations : []).find((entry) => entry.key === rule.operationKey && entry.toolName === rule.toolName);
 }
 

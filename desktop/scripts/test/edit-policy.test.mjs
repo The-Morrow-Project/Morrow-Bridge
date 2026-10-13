@@ -192,3 +192,62 @@ test("a saved grant that still carries an end time is honored until then, then l
   delete extended.expiresAt;
   assert.equal(await validEditPermission({ permission: extended, binding, catalogDigest: CATALOG_DIGEST, operations: moodleOperations }), null, "removing the end time must not validate as a grant with no end");
 });
+
+test("the default Edit for a new course leaves out removal, beyond-course, unchecked, and field-choice actions", () => {
+  const ids = editPolicy.defaultEditCategoryIds([
+    { id: "b", availability: "edit", destructive: false, reach: "course", verification: "checked" },
+    { id: "a", availability: "edit", destructive: false },
+    { id: "remove", availability: "edit", destructive: true },
+    { id: "site", availability: "edit", destructive: false, reach: "beyond" },
+    { id: "unchecked", availability: "edit", destructive: false, verification: "unchecked" },
+    { id: "fields", availability: "edit", destructive: false, requiresFieldSelection: true },
+    { id: "review", availability: "review", destructive: false },
+  ]);
+  assert.deepEqual(ids, ["a", "b"]);
+
+  const defaults = editPolicy.defaultEditCategoryIds(options);
+  assert.ok(defaults.length > 0);
+  assert.ok(defaults.includes("action:moodle:moodle_update_page"));
+  assert.ok(!defaults.includes("action:moodle:moodle_delete_book_chapter"));
+  assert.ok(!defaults.includes("action:moodle:moodle_delete_activity"));
+  assert.equal(option("moodle_copy_course").availability, "edit");
+  assert.ok(!defaults.includes("action:moodle:moodle_copy_course"), "copying a course creates a course outside the connected one");
+});
+
+test("the default Edit for a new course is a valid grant", async () => {
+  const permission = await createEditPermission({
+    binding,
+    catalogDigest: CATALOG_DIGEST,
+    revision: 1,
+    enabledCategories: editPolicy.defaultEditCategoryIds(options),
+    operations: moodleOperations,
+  });
+  assert.equal(permission.expiresAt, undefined);
+  assert.ok(await validEditPermission({ permission, binding, catalogDigest: CATALOG_DIGEST, operations: moodleOperations }));
+  const write = (operationKey, toolName, args) => matchesBridgeEditPermission(bridgeBinding(permission), {
+    provider: "moodle", catalogDigest: CATALOG_DIGEST, operationKey, toolName, arguments: args,
+  });
+  assert.equal(write("moodle.form.course.modedit.page.write.v1", "moodle_update_page", { course_id: 2, module_id: 7, name: "Cells", expected_digest: "d".repeat(64) }), true);
+  assert.equal(write("moodle.form.mod.book.chapter.delete.write.v1", "moodle_delete_book_chapter", { course_id: 2, module_id: 7, chapter_id: 31, expected_digest: "d".repeat(64) }), false);
+  const copy = moodleOperations.find((entry) => entry.toolName === "moodle_copy_course");
+  const copyArgs = { course_id: 2, new_full_name: "Copy", new_short_name: "COPY", category_id: 1, acknowledge_new_course: true, expected_digest: "d".repeat(64) };
+  assert.equal(write(copy.key, copy.toolName, copyArgs), false, "the default grant does not authorize copying the course");
+  const withCopy = await createEditPermission({ binding, catalogDigest: CATALOG_DIGEST, revision: 1, enabledCategories: ["action:moodle:moodle_copy_course"], operations: moodleOperations });
+  assert.equal(matchesBridgeEditPermission(bridgeBinding(withCopy), { provider: "moodle", catalogDigest: CATALOG_DIGEST, operationKey: copy.key, toolName: copy.toolName, arguments: copyArgs }), true, "a grant that names the copy authorizes it, so the refusal above is the default's own");
+});
+
+test("the default Edit for a new Canvas course leaves out Item Bank changes that can reach other courses", () => {
+  const read = (name) => JSON.parse(readFileSync(new URL(`connector/extension/generated/${name}`, root), "utf8")).operations;
+  const canvasOperations = [...read("canvas-api-catalog.json").map((operation) => ({ ...operation, provider: "canvas" })), ...read("canvas-browser-catalog.json")];
+  const canvasOptions = categoriesForBinding({ provider: "canvas" }, canvasOperations);
+  const defaults = editPolicy.defaultEditCategoryIds(canvasOptions);
+  const bankOptions = canvasOptions.filter((entry) => entry.id.startsWith("action:canvas:canvas_item_bank_") && entry.availability === "edit" && !entry.destructive);
+  assert.ok(bankOptions.length > 1);
+  for (const entry of bankOptions) {
+    const toolName = entry.id.replace("action:canvas:", "");
+    const reachesOthers = Object.hasOwn(canvasOperations.find((operation) => operation.toolName === toolName)?.inputSchema?.properties || {}, "acknowledged_course_ids");
+    assert.equal(defaults.includes(entry.id), !reachesOthers, `${toolName} ${reachesOthers ? "can reach other courses" : "reaches only this course"}`);
+  }
+  assert.ok(defaults.includes("action:canvas:canvas_item_bank_create_bank"));
+  assert.ok(!defaults.includes("action:canvas:canvas_item_bank_share_bank"));
+});

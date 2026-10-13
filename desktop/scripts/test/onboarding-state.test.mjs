@@ -122,7 +122,7 @@ test("setup guide steps name only controls that exist", () => {
   const none = setupGuideState({ ...connected, bindings: [], siteAnchors: [] });
   assert.equal(none.detail, "Sign in to Canvas or Moodle in Chrome and open any course. Select Pair Canvas account or Pair Moodle account in Morrow Bridge, then allow access to the site Chrome shows. You pair each account once.");
   const plan = setupGuideState({ ...connected, bindings: [], siteAnchors: [{ runtimeVerified: true }] });
-  assert.equal(plan.detail, "Choose Selected courses to allow specific courses in Plan and Edit settings. Choose Account access to let your assistant work across the account's courses without selecting each one in Bridge. Plan keeps changes in review.");
+  assert.equal(plan.detail, "Choose Selected courses to allow specific courses in Plan and Edit settings. Choose Account access to let your assistant work across the account's courses without selecting each one in Bridge. Selected courses start in Edit; choose Plan for a course to review each change first.");
   const html = readFileSync(new URL("../../connector/extension/onboarding/onboarding.html", import.meta.url), "utf8");
   for (const text of [closed.detail, none.detail, plan.detail, html]) {
     assert.doesNotMatch(text, /Connect Canvas|Connect Moodle|Find available courses|Connect selected courses|matching platform button/);

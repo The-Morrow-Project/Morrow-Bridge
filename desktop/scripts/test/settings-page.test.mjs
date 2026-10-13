@@ -1430,6 +1430,41 @@ test("the detail's own Edit. Routine edits. button turns on the routine set for 
   assert.equal(page.text("#notice"), "Routine edits are on for Anatomy. They stay on until you choose Plan.");
 });
 
+// A newly allowed course starts with every course edit. Its detail names that level instead of
+// listing each kind, and keeps Plan, Routine edits and Customize one step away to narrow it.
+test("an All course edits course reads as that level, with no list, and its detail keeps the ways to narrow it", async () => {
+  const all = canvasCourse(1, "Anatomy", { allCourseEdits: true, editPermission: { ...editPermissionSummary("canvas:course-1"), enabledCategories: ["canvas_assignment_text", "canvas_pages_text"] } });
+  const page = await openSettings({ status: () => statusFixture([all]) });
+  await page.waitFor(() => page.queryAll(".course-row-state").length === 1, "the course row never showed");
+  assert.equal(page.text(".course-row-state"), "Edit. All course edits.");
+  const detail = await openCourseDetail(page, all.sourceBindingId);
+  assert.equal(detail.querySelector('[data-set-level="all"]').getAttribute("aria-pressed"), "true");
+  assert.equal(detail.querySelector('[data-set-level="plan"]').getAttribute("aria-pressed"), "false");
+  assert.equal(detail.querySelector('[data-set-level="routine"]').getAttribute("aria-pressed"), "false");
+  assert.equal(detail.querySelector(".routine-bundle-list"), null);
+  assert.match(detail.querySelector(".field-help").textContent, /^Morrow makes every change this course offers in Edit without another approval, within what your own account can do, until you choose Plan\. It still asks before changes that remove content, reach beyond this course, or cannot be checked after they are saved\./);
+  assert.notEqual(detail.querySelector('[data-open-customize="1"]'), null);
+});
+
+test("the detail's own Edit. All course edits. button saves every course edit except removal, beyond-course and unchecked actions", async () => {
+  const plan = canvasCourse(1, "Anatomy");
+  const beyond = Object.freeze({ ...ROUTINE_BUNDLE_B, id: "action:canvas:canvas_update_account_thing", routine: false, reach: "beyond" });
+  const unchecked = Object.freeze({ ...ROUTINE_BUNDLE_B, id: "action:canvas:canvas_unchecked_thing", routine: false, verification: "unchecked", verificationReason: "Canvas has no read for this." });
+  const page = await openSettings({
+    status: () => statusFixture([plan]),
+    options: (sourceBindingId) => optionsFixture(sourceBindingId, [FIELD_SELECTION_BUNDLE, ROUTINE_BUNDLE_B, DESTRUCTIVE_ACTION, REVIEW_ONLY_ACTION, FIELD_SELECTION_WITH_BUNDLE, beyond, unchecked]),
+  });
+  const detail = await openCourseDetail(page, plan.sourceBindingId);
+  await page.click(`#${detail.getAttribute("id")} [data-set-level="all"]`);
+  await page.waitFor(() => page.messages("morrow_edit_policy_save").length === 1, "the page never saved all course edits for this course");
+  assert.deepEqual(page.messages("morrow_edit_policy_save")[0], {
+    type: "morrow_edit_policy_save", sourceBindingId: plan.sourceBindingId,
+    enabledCategories: [FIELD_SELECTION_BUNDLE.id, ROUTINE_BUNDLE_B.id],
+  });
+  await page.waitFor(() => page.text("#notice") !== "", "the page never confirmed all course edits");
+  assert.equal(page.text("#notice"), "All course edits are on for Anatomy. They stay on until you choose Plan.");
+});
+
 // WI-5.4: "Remove" saves the list without that bundle.
 test("Remove saves the list without that bundle", async () => {
   const custom = canvasCourse(1, "Anatomy", { editPermission: { ...editPermissionSummary("canvas:course-1"), enabledCategories: ["canvas_assignment_text", "canvas_publish_state"] } });
@@ -2043,6 +2078,24 @@ test("Connect on a list that expired reads that site's list again, then connects
   assert.deepEqual(saved, ["discovery-2"]);
   assert.equal(page.hidden("#error"), true);
   assert.equal(page.text("#notice"), "Anatomy is connected in Plan. Morrow asks before each change.");
+});
+
+test("Connect names Edit when the Bridge starts the new course in Edit", async () => {
+  const site = discoverySite("canvas-site-edit-default");
+  const page = await openSettings({
+    status: () => statusFixture([], { siteAnchors: [site] }),
+    handlers: {
+      morrow_course_discovery_start: () => discoveryResult(site, "discovery-edit-default", [{ id: "7", name: "Anatomy" }]),
+      morrow_course_selection_save: ({ siteAnchorId, courseIds }) => ({
+        siteAnchorId,
+        bindings: courseIds.map((courseId) => ({ courseId, editPermission: editPermissionSummary(`canvas:course-${courseId}`) })),
+      }),
+    },
+  });
+  await page.waitFor(() => page.queryAll("[data-connect-row]").length === 1, "the available course never showed");
+  await page.click('[data-connect-row="https://canvas.example.edu|7"]');
+  await page.waitFor(() => page.text("#notice") !== "", "Connect never reported the result");
+  assert.equal(page.text("#notice"), "Anatomy is connected in Edit. Morrow makes changes your account can make there, and asks before changes that remove content. Choose Plan in its details to review every change first.");
 });
 
 test("Connect that the Bridge answers with an old or missing list reads the list again and tries once more", async () => {
