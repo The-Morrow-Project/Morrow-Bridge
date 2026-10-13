@@ -11,10 +11,15 @@ clean product-only tree. This is separate from Claude's desktop MCP version.
 
 **Removal note:** The PAT lane probe (`lanes/detect.py`) and the QR OAuth
 proof (`qr-proof/`) were removed from the repository. The session lane
-remains. The 2026-09-20 receipts below stay as history.
+remains. The rig session capture (`session/`), the guided `reauth` and
+`selftest` drill commands of `reauth/state_machine.py`, and
+`bin/keepalive-canvas.sh` were removed too: they read the Canvas session
+cookie out of the browser and could replay it over raw HTTPS. Recovery
+uses `reauth/state_machine.py resume`. The 2026-09-20 receipts below stay
+as history.
 
 **Components:**
-- Session capture (`session/capture.py`) and CDP support (`session/cdp.py`)
+- Session capture (`session/`): removed. Nothing reads or replays the Canvas session cookie.
 - LTI provisioning chain (`provision/provision.py`)
 - Product manifest pack (`pack/pack.json`, version 0.3.0, entries intentionally empty)
 - Dispatch executor and journal (`dispatch/executor.py`)
@@ -43,7 +48,7 @@ scratch, desktop MCP files, test-only helpers, Mac worktree material.
 - `pack/` - pack.json (product manifest pack)
 - `provision/` - provision.py, manifests/
 - `reauth/` - state_machine.py
-- `session/` - capture.py, cdp.py
+- `session/` - removed with the session capture
 
 **Session state:** `~/.morrow/session.json` (Canvas, principal 28206)
 **Journal:** `~/.morrow/trees/<tree-id>/journal/ops.jsonl` (or
@@ -52,14 +57,9 @@ scratch, desktop MCP files, test-only helpers, Mac worktree material.
 
 ## How to run it
 
-### Session capture (first time)
-```bash
-cd ~/workspace/morrow-for-muse-deploy
-python3 session/capture.py
-# Educator signs in through the login helper page. capture.py attaches
-# through the helper's token-authenticated /cdp/* proxy (W4-P0-3: no
-# TCP CDP listener exists). No credentials are shared with the agent side.
-```
+### Sign-in
+The educator signs in through the login helper page. The browser keeps
+the session; no step copies the session cookie out of it.
 
 ### Provisioning (no-PAT LTI chain)
 ```bash
@@ -79,9 +79,9 @@ The static item bank fan-out manifest
 Banks SDK lane (transport/item_bank_sdk.py), not through a frozen
 manifest. The remaining runnable entry is `morrow_check_new_quiz`.
 ```
-### Reauth drill
+### Reauth recovery
 ```bash
-python3 reauth/state_machine.py selftest
+python3 reauth/state_machine.py resume
 ```
 
 ### Keepalive scheduler
@@ -160,7 +160,7 @@ conventions in `proof-battery/OPERATION_CATALOG.md`). Neither uses
 
 | Keepalive | Schedule | Status |
 |-----------|----------|--------|
-| Canvas | Daily (every 24h) | **Live.** Last run: 200, principal 28206. Log: `logs/keepalive-canvas.log` |
+| Canvas | Daily (every 24h) | **Removed** with the session capture. At the 2026-09-20 readback it was live: last run 200, principal 28206. The product keepalive is `helper/keepalive.sh`. |
 | Moodle | Every 6 hours | **Installed but dormant at this 2026-09-20 readback.** No Moodle session bundle existed. The script logged `IDLE` and exited 0. `moodle/login.py` does not create a persisted bundle. Log: `logs/keepalive-moodle.log` |
 
 **Note:** The VM has no cron daemon. The scheduler is a Python daemon under

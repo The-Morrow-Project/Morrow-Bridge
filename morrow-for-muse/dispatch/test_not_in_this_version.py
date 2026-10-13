@@ -281,6 +281,61 @@ def test_each_refusal_says_what_morrow_never_does():
         assert words in str(info.value), str(info.value)
 
 
+TOOL_EDIT = ("canvas_edit_external_tool_courses", "PUT",
+             "/api/v1/courses/{course_id}/external_tools/{external_tool_id}",
+             {"course_id": "42", "external_tool_id": "7"})
+
+
+@pytest.mark.parametrize("body", [
+    {"consumer_key": "FAKE-KEY", "shared_secret": "FAKE-SECRET"},
+    {"external_tool": {"shared_secret": "FAKE-SECRET"}},
+    {"login": {"password": "FAKE-PASSWORD"}},
+    {"consumer_key": "false", "shared_secret": "0"},
+    {"shared_secret": "off"},
+    {"external_tool": {"Shared_Secret": "no"}},
+], ids=["json", "nested", "password", "false-looking", "off", "mixed-case"])
+def test_a_typed_credential_is_refused_before_it_is_rendered_or_saved(
+        edit_mode, body):
+    session = edit_mode(_canvas())
+    name, method, path, params = TOOL_EDIT
+    code, out = _cli(["plan-write", "--name", name, "--method", method,
+                      "--path", path, "--params", json.dumps(params),
+                      "--body", json.dumps(body)] + _who())
+    assert code != 0, out
+    assert "NeverDispatch" in out, out
+    for value in _secret_values(body):
+        assert value not in out, out
+    assert session.calls == []
+    pending = os.path.join(ex.MORROW_HOME, ex.PENDING_WRITES_DIRNAME)
+    assert not os.path.isdir(pending) or os.listdir(pending) == []
+
+
+def _secret_values(body):
+    if isinstance(body, dict):
+        for value in body.values():
+            yield from _secret_values(value)
+    elif isinstance(body, str) and body.startswith("FAKE-"):
+        yield body
+
+
+def test_a_typed_credential_in_a_form_body_is_refused():
+    name, method, path, _params = TOOL_EDIT
+    entry = ex.catalog_descriptor_to_entry(
+        name, method, path, None, "canvas", None,
+        {"body": "name=Tool&consumer_key=FAKE-KEY&shared_secret=FAKE-SECRET"})
+    with pytest.raises(admission_mod.NeverDispatch) as info:
+        admission_mod.check_never_dispatch(entry, admission_mod.load_policy())
+    assert "FAKE-" not in str(info.value)
+
+
+def test_an_external_tool_rename_without_credentials_still_runs():
+    name, method, path, _params = TOOL_EDIT
+    entry = ex.catalog_descriptor_to_entry(
+        name, method, path, None, "canvas", None,
+        {"body": {"name": "Renamed tool"}})
+    admission_mod.check_never_dispatch(entry, admission_mod.load_policy())
+
+
 def test_plan_write_refuses_acting_as_someone_else_before_the_educator_is_asked(
         edit_mode):
     session = edit_mode(_canvas(assignment=ESSAY))
@@ -555,3 +610,51 @@ def test_the_failed_students_query_is_documented_as_not_in_this_version():
         "CHANGELOG 0.4.1 still claims the failed-students answer")
     morrow = read("bin", "morrow")
     assert "not available in this version" in morrow
+
+
+def test_a_receipt_masks_an_lti_key_and_secret():
+    masked = ex.redact_payload(
+        {"name": "Tool", "consumer_key": "FAKE-KEY", "shared_secret": "FAKE-SECRET"},
+        ex.DEFAULT_REDACT_PATTERNS)
+    assert "FAKE-" not in json.dumps(masked)
+    assert masked["name"] == "Tool"
+
+
+QUIZ_EDIT = ("canvas_edit_quiz", "PUT", "/api/v1/courses/{course_id}/quizzes/{id}",
+             {"course_id": "42", "id": "5"})
+
+
+@pytest.mark.parametrize("body", [
+    {"quiz": {"access_code": "FAKE-QUIZ-PASSWORD"}},
+    {"quiz[access_code]": "FAKE-QUIZ-PASSWORD"},
+    {"quiz": {"title": "Q", "access_code": "0"}},
+], ids=["nested", "form-key", "false-looking"])
+def test_a_quiz_password_is_refused_before_it_is_rendered_or_saved(
+        edit_mode, body):
+    session = edit_mode(_canvas())
+    name, method, path, params = QUIZ_EDIT
+    code, out = _cli(["plan-write", "--name", name, "--method", method,
+                      "--path", path, "--params", json.dumps(params),
+                      "--body", json.dumps(body)] + _who())
+    assert code != 0, out
+    assert "NeverDispatch" in out, out
+    assert "FAKE-QUIZ-PASSWORD" not in out, out
+    assert session.calls == []
+    pending = os.path.join(ex.MORROW_HOME, ex.PENDING_WRITES_DIRNAME)
+    assert not os.path.isdir(pending) or os.listdir(pending) == []
+
+
+def test_a_quiz_edit_without_a_password_still_runs():
+    name, method, path, _params = QUIZ_EDIT
+    for body in ({"quiz": {"title": "Week 1 quiz"}},
+                 {"quiz": {"title": "Q", "access_code": ""}}):
+        entry = ex.catalog_descriptor_to_entry(
+            name, method, path, None, "canvas", None, {"body": body})
+        admission_mod.check_never_dispatch(entry, admission_mod.load_policy())
+
+
+def test_a_receipt_masks_a_quiz_password():
+    masked = ex.redact_payload({"quiz": {"title": "Q", "access_code": "FAKE-QUIZ-PASSWORD"}},
+                               ex.DEFAULT_REDACT_PATTERNS)
+    assert "FAKE-QUIZ-PASSWORD" not in json.dumps(masked)
+    assert masked["quiz"]["title"] == "Q"

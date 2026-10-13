@@ -131,7 +131,7 @@ learner-scope op from being dispatched today.
 | Uncertain-write reconciliation | `readback-plan.ts` `planCanvasRecoveryDescriptor` (retained recovery reads; never resend) + broker `applied_or_unknown` state | executor `UncertainWrite` exception: "the op is journaled as uncertain for reconciliation" | missing (second half) | high | The journaling half exists; the reconciliation worker that later checks the retained reads does not. An uncertain op today is recorded and then sits |
 | Recovery descriptors for POSTs (collection retained to detect double-create) | `readback-plan.ts` (parent collection retained for POSTs) | NONE | missing | medium | Without it, a retried POST after an ambiguous response cannot be checked for a duplicate |
 
-## 6. Canvas REST catalog admission and readback plans (provision/, lanes/)
+## 6. Canvas REST catalog admission and readback plans (provision/)
 
 | Feature | Desktop source path | Muse counterpart (path or NONE) | Status | Criticality | Required remediation |
 |---|---|---|---|---|---|
@@ -201,7 +201,7 @@ unsupported.
 |---|---|---|---|---|---|
 | Authenticated execution context | Chrome extension in the user's own browser (`fetch` with `credentials: "include"`) | Two competing models (see conflict below) | n/a | critical | Resolve the conflict before production |
 | Model A: browser-task transport (no credential exposure) | n/a | `transport/batch.py` + `transport/state.py` (metadata only, refuses credential-shaped keys); live-proven 2026-09-20 | ported-and-proven | critical | This is the architecturally endorsed lane per `transport/README.md` |
-| Model B: cookie capture + HTTPS replay | n/a | `session/capture.py` + `session/cdp.py` (helper /cdp/* proxy, W4-P0-3: no TCP CDP; session-cookie heuristic, live CSRF from `document.cookie` in an isolated world, principal verification) + `dispatch/executor.py` `canvas_session` slot | ported-but-unproven | critical | **Conflict:** `transport/README.md` declares this model RETIRED (OTP-walled on CHCP tenants; violates no-exposure), while `capture.py` still calls itself the "source of truth" and the executor still implements cookie replay. One of them must go |
+| Model B: cookie capture + HTTPS replay | n/a | `session/capture.py` + `session/cdp.py` (helper /cdp/* proxy, W4-P0-3: no TCP CDP; session-cookie heuristic, live CSRF from `document.cookie` in an isolated world, principal verification) + `dispatch/executor.py` `canvas_session` slot | removed | resolved | `session/capture.py`, `session/cdp.py`, and the guided `reauth` subprocess were removed; the executor refuses the retired `canvas_session` slot. |
 | Canvas reauth state machine | n/a (user's browser session persists) | `reauth/state_machine.py` (expiry classification, write_halt ownership, quarantine, notify, re-sign-in, principal-pinned resume; selftest present) | ported-but-unproven | high | Selftest receipt exists (`proofs/reauth_selftest_receipt.txt`); no live dead-session recovery receipt |
 | QR mobile-login proof | n/a | Removed. The QR OAuth proof is not in the repository. | removed | low | The QR OAuth proof was removed. The session lane remains. |
 
@@ -270,10 +270,8 @@ weaker, non-equivalent control and is tracked as a gap in section 13.
 
 ## Prioritized remediation list
 
-1. **Resolve the session-model conflict (critical).** `transport/README.md` retires cookie
-   capture; `session/capture.py` and `dispatch/executor.py` still implement it. Pick one:
-   either delete Model B from the deploy tree or rescind the retirement. Until then the
-   product ships two contradictory credential postures.
+1. **Resolve the session-model conflict (resolved).** Model B was deleted from the tree:
+   the session capture is gone and the executor refuses the retired cookie slot.
 2. **Build the admission gate (critical).** Port `operation-admission.ts` (or a Muse-native
    equivalent) so the 223 cataloged writes are not all dispatchable. Minimum viable: hold
    learner-scope routes, account routes, cross-course object routes, and the file-upload

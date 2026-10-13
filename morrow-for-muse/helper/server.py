@@ -1324,10 +1324,12 @@ class HelperBrowser:
         forward jump must not fake an imminent expiry and churn
         re-auths; a backward jump must not hide a real one).
 
-        Reads cookie METADATA ONLY through CDP (Network.getCookies scoped
-        to the tenant origin): only the `expires` timestamps and the count
-        leave this function. No cookie names, values, or domains are read
-        into Python, logged, or returned. Session cookies (expires <= 0)
+        Uses cookie METADATA ONLY (Network.getCookies scoped to the tenant
+        origin, on the helper's private pipe). CDP returns full cookie
+        objects into this function's memory; only the `expires`
+        timestamps and the count are used, and only they leave this
+        function. No cookie name, value, or domain is logged, stored, or
+        returned. Session cookies (expires <= 0)
         and tenants without a configured base are skipped.
 
         W6-P2-S3: a CDP read failure sets _cookie_expiry_read_ok False
@@ -2042,7 +2044,6 @@ _CDP_PROXY_ALLOWLIST = frozenset({
     "Network.enable",           # base-class network capture flows
     "Network.disable",
     "Network.getResponseBody",
-    "Network.getCookies",       # session/capture.py cookie jar
     "Browser.setDownloadBehavior",  # launcher attach-mode download guard
                                     # (browser-level only)
 })

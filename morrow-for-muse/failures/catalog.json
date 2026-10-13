@@ -1122,7 +1122,7 @@
       "title": "Session expires with no warning (zero pre-expiry awareness)",
       "surface": "session",
       "severity_hint": "high",
-      "root_cause": "Verified gap: no code consumes the rig session capture's captured_at (session/capture.py, dev tree only, not shipped) for horizon math or reads cookie expires for warnings. The docs are honest that expiry happens; they just promise no warning.",
+      "root_cause": "Verified gap: no code consumes the rig session capture's captured_at (a rig-only script, since removed) for horizon math or reads cookie expires for warnings. The docs are honest that expiry happens; they just promise no warning.",
       "is_not": "This is not a monitoring failure on a specific day; the capability was never built.",
       "agent_message": "What was attempted: I tried {operation} and found your Canvas sign-in had ended, with no warning beforehand (reference {correlation_id}). What the evidence showed: Canvas ended the sign-in on its own schedule; the first sign is always a task that failed, never a warning. What this means: nothing went wrong with the task; the sign-in simply reached its end. What happens next: I have paused everything that changes your course and set aside what was under way. Please sign in again on the helper page; I will check that it is you, then ask you before anything set aside runs again.",
       "auto_action": "Pause writes, set aside the in-flight change, and ask the educator to sign in again on the helper page; verify the account before anything resumes.",

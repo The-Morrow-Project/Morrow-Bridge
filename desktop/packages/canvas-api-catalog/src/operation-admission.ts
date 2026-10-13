@@ -45,7 +45,7 @@ export type CanvasWriteAdmission =
   }
   | {
     readonly state: "held";
-    readonly reason: "multi_step_upload_requires_reviewed_transfer";
+    readonly reason: "multi_step_upload_requires_reviewed_transfer" | "mints_a_credential" | "receives_a_credential";
   };
 
 export interface CanvasOperationAdmission {
@@ -227,6 +227,49 @@ function reviewedFileTransferRoute(operation: Pick<CanvasApiOperation, "method" 
   );
 }
 
+/**
+ * Writes that mint, regenerate, or return a credential: a person's access token, sign-in or
+ * service token, or pairing code, and an application's client secret. Morrow never mints,
+ * regenerates, or receives a credential, so none of these is sent; a person or an administrator
+ * does them in Canvas itself.
+ */
+const CREDENTIAL_MINTING_ROUTES: readonly string[] = Object.freeze([
+  "POST /v1/users/{user_id}/tokens",
+  "PUT /v1/users/{user_id}/tokens/{id}",
+  "POST /v1/jwts",
+  "POST /v1/jwts/refresh",
+  "POST /v1/inst_access_tokens",
+  "POST /v1/users/self/pandata_events_token",
+  "POST /v1/services/kaltura_session",
+  "POST /v1/users/{user_id}/observer_pairing_codes",
+  "POST /v1/developer_keys/{id}/regenerate_secret",
+  "POST /v1/accounts/{account_id}/developer_keys",
+  "POST /v1/accounts/{account_id}/lti_registrations",
+  "POST /v1/accounts/{account_id}/apps",
+]);
+
+function credentialMintingRoute(operation: Pick<CanvasApiOperation, "method" | "path">): boolean {
+  return CREDENTIAL_MINTING_ROUTES.includes(`${operation.method} ${operation.path}`);
+}
+
+/**
+ * Writes that carry a password or a tool's shared secret the person types. Morrow's plan,
+ * approval page, journal, and recovery read keep a copy of every argument, so these stay held
+ * until typed credentials are kept out of them.
+ */
+const CREDENTIAL_INPUT_ROUTES: readonly string[] = Object.freeze([
+  "POST /v1/users/{user_id}/observees",
+  "POST /v1/accounts/{account_id}/users",
+  "POST /v1/accounts/{account_id}/logins",
+  "PUT /v1/accounts/{account_id}/logins/{id}",
+  "POST /v1/accounts/{account_id}/external_tools",
+  "POST /v1/courses/{course_id}/external_tools",
+]);
+
+function credentialInputRoute(operation: Pick<CanvasApiOperation, "method" | "path">): boolean {
+  return CREDENTIAL_INPUT_ROUTES.includes(`${operation.method} ${operation.path}`);
+}
+
 export type CanvasReviewedUploadKind = "file" | "rubric_csv";
 
 /**
@@ -386,6 +429,8 @@ export function canvasOperationAdmission(operation: CanvasApiOperation): CanvasO
   if (reviewedFileTransferRoute(operation)) {
     return { ...scope, write: { state: "held", reason: "multi_step_upload_requires_reviewed_transfer" } };
   }
+  if (credentialMintingRoute(operation)) return { ...scope, write: { state: "held", reason: "mints_a_credential" } };
+  if (credentialInputRoute(operation)) return { ...scope, write: { state: "held", reason: "receives_a_credential" } };
   return { ...scope, write: { state: "admitted" } };
 }
 
@@ -470,11 +515,16 @@ export function canvasReadbackAssessment(
 /**
  * The plain sentence for a held write, shown to the person who asked for the change: what the change
  * would do, why Morrow holds it, and what they can do instead. The catalog carries no Canvas LTI
- * service write (scripts/generate-canvas-api-catalog.mjs), so the reviewed file transfer is the one
- * held class.
+ * service write (scripts/generate-canvas-api-catalog.mjs).
  */
 export function canvasAdmissionReason(admission: CanvasWriteAdmission): string | undefined {
   if (admission.state !== "held") return undefined;
+  if (admission.reason === "receives_a_credential") {
+    return "This change would carry a password or a tool's shared secret that you type, and Morrow does not yet keep typed credentials out of its plans and records, so it does not send this change. Make it in Canvas itself.";
+  }
+  if (admission.reason === "mints_a_credential") {
+    return "This change would create, renew, or return a sign-in credential or an application secret, and Morrow does not create or receive credentials. Do it yourself in Canvas: in your account settings, or on the Developer Keys page if you are an administrator.";
+  }
   return "Canvas takes a file's bytes in a later request that this route cannot carry, so Morrow sends every file through its reviewed file transfer, which checks the saved file and its bytes. Ask Morrow to prepare the file upload for this same target.";
 }
 

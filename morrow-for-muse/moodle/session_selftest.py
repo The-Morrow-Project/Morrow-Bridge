@@ -104,7 +104,7 @@ def t_normalize():
         lane_refused = False
     except ValueError:
         lane_refused = True
-    check("https: lanes/detect refuses http", lane_refused)
+    check("https: shared normalizer refuses http", lane_refused)
 
 
 # ------------------------------------------------- W4-P2-1 fake transport

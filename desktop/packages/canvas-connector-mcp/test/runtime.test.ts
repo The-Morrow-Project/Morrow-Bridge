@@ -1032,6 +1032,57 @@ describe("CanvasConnectorRuntime", () => {
     expect(commands).toBe(2);
   });
 
+  it("sends no Bridge command for any Canvas write that mints, returns, or carries a credential", async () => {
+    const runtime = await start();
+    const socket = sockets.at(-1)!;
+    let commands = 0;
+    respond(socket, () => { commands += 1; });
+    const grant = {
+      plan_digest: "a".repeat(64),
+      approval_grant_digest: "b".repeat(64),
+      effect_receipt_id: "effect:credential-hold",
+      dispatch_attempt: 1,
+      gateway_process_id: "gateway:connector-test",
+    };
+    const minting: Record<string, Record<string, string>> = {
+      canvas_create_access_token: { user_id: "self" },
+      canvas_update_access_token: { user_id: "self", id: "9" },
+      canvas_create_jwt: {},
+      canvas_refresh_jwt: {},
+      canvas_deprecated_create_instaccess_token: {},
+      canvas_get_pandata_events_jwt_token_and_its_expiration_date: {},
+      canvas_start_kaltura_session: {},
+      canvas_create_observer_pairing_code: { user_id: "self" },
+      canvas_regenerate_developer_key_secret: { id: "9" },
+      canvas_create_developer_key: { account_id: "1" },
+      canvas_create_lti_registration_lti_registrations: { account_id: "1" },
+      canvas_create_lti_registration_apps: { account_id: "1" },
+    };
+    for (const [toolName, args] of Object.entries(minting)) {
+      expect(await runtime.call(toolName, {
+        ...args,
+        _morrow: { source_binding_id: "canvas:test-account", outer_grant: grant },
+      }), toolName).toMatchObject({ ok: false, resultState: "not_sent", problem: { message: expect.stringContaining("does not create or receive credentials") } });
+    }
+    const receiving: Record<string, Record<string, string>> = {
+      canvas_add_observee_with_credentials: { user_id: "self", observee_unique_id: "student", observee_password: "FAKE-PASSWORD-123" },
+      canvas_create_user: { account_id: "1", pseudonym_unique_id: "new.user", pseudonym_password: "FAKE-PASSWORD-123" },
+      canvas_create_user_login: { account_id: "1", user_id: "7", login_unique_id: "new.login", login_password: "FAKE-PASSWORD-123" },
+      canvas_edit_user_login: { account_id: "1", id: "9", login_password: "FAKE-PASSWORD-123" },
+      canvas_create_external_tool_accounts: { account_id: "1", consumer_key: "FAKE-KEY", shared_secret: "FAKE-SECRET" },
+      canvas_create_external_tool_courses: { course_id: "42", consumer_key: "FAKE-KEY", shared_secret: "FAKE-SECRET" },
+    };
+    for (const [toolName, args] of Object.entries(receiving)) {
+      const result = await runtime.call(toolName, {
+        ...args,
+        _morrow: { source_binding_id: "canvas:test-account", outer_grant: grant },
+      });
+      expect(result, toolName).toMatchObject({ ok: false, resultState: "not_sent", problem: { message: expect.stringContaining("does not yet keep typed credentials") } });
+      expect(JSON.stringify(result), toolName).not.toMatch(/FAKE-(?:PASSWORD|KEY|SECRET)/);
+    }
+    expect(commands).toBe(0);
+  });
+
   it("forwards one exact guarded Assignment image repair only through the current extension", async () => {
     const runtime = await start(undefined, "1.0.0-rc.2");
     const socket = sockets.at(-1)!;

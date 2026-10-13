@@ -79,7 +79,7 @@ test("a Canvas option beyond the course is area beyond_course and reach beyond; 
 test("the Canvas options a resource table cannot place stay other, a fixed and reported count", () => {
   const courseScoped = canvasOptions.filter((option) => option.reach === "course");
   const other = courseScoped.filter((option) => option.area === "other");
-  assert.equal(other.length, 84);
+  assert.equal(other.length, 83);
 });
 
 test("reach agrees with the admission class for every Canvas option", () => {

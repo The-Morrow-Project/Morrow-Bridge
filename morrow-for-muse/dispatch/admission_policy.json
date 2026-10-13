@@ -233,7 +233,7 @@
   ]
  },
  "never_dispatch": {
-  "note": "These operations are never dispatchable through the installed product, for any caller, even with educator approval. They are the standing exclusions (proof directive 2026-09-20) and the catalog's excluded set: announcements, messages to people, support tickets, and operations that affect more than one course. canvas_create_external_feed_courses is here because an announcement external feed posts every item of the feed as an announcement.",
+  "note": "These operations are never dispatchable through the installed product, for any caller, even with educator approval. They are the standing exclusions (proof directive 2026-09-20) and the catalog's excluded set: announcements, messages to people, support tickets, and operations that affect more than one course. canvas_create_external_feed_courses is here because an announcement external feed posts every item of the feed as an announcement. canvas_create_external_tool_courses is here because it takes the tool's LTI 1.1 consumer_key and shared_secret, and the approval display, plan files, and receipts would keep them; it comes back when credential inputs are handled without persisting them (THE-87).",
   "tool_names": [
    "canvas_begin_migration_to_push_to_associated_courses",
    "canvas_set_or_remove_restrictions_on_blueprint_course_object",
@@ -243,7 +243,8 @@
    "canvas_set_feature_flag_courses",
    "canvas_disable_assignments_currently_enabled_for_grade_export_to_sis",
    "canvas_send_message_to_unsubmitted_or_submitted_users_for_quiz",
-   "canvas_create_external_feed_courses"
+   "canvas_create_external_feed_courses",
+   "canvas_create_external_tool_courses"
   ],
   "url_substrings": [
    "/conversations",
@@ -261,7 +262,12 @@
    "notify_of_update": "sends every student in the course a notice about the change; Morrow Bridge for Muse never sends messages to people, even when asked",
    "as_user_id": "makes Canvas act as another person (masquerading); Morrow Bridge for Muse never acts as anyone other than you, even when asked"
   },
-  "request_flags_note": "A request whose query, body, or URL query sets one of these keys to anything Canvas does not read as false is refused on every route and every lane, before approval, with no override. The catalog's excluded set names the announcement variants of discussion create; the flag rule covers every route that accepts it, the topic update included. notify_of_update rides on assignment, page, and classic quiz create and edit; as_user_id (masquerading) rides on any route, a read included. The consent page lists all three under what Morrow will not do in this version, even if you ask."
+  "request_flags_note": "A request whose query, body, or URL query sets one of these keys to anything Canvas does not read as false is refused on every route and every lane, before approval, with no override. The catalog's excluded set names the announcement variants of discussion create; the flag rule covers every route that accepts it, the topic update included. notify_of_update rides on assignment, page, and classic quiz create and edit; as_user_id (masquerading) rides on any route, a read included. The consent page lists all three under what Morrow will not do in this version, even if you ask.",
+  "credential_keys": {
+   "keys": ["password", "old_password", "consumer_key", "shared_secret", "client_secret", "access_token", "private_key", "access_code"],
+   "reason": "carries a password or a tool's key or secret that you type, and Morrow Bridge for Muse would keep a copy in its plan and approval files; it is refused until typed credentials are kept out of them (THE-87). Make this change in Canvas itself",
+   "note": "A request whose query, body, or URL query sets one of these keys is refused on every route and every lane, before the plan is rendered or saved, whatever the value looks like: a secret can read as false or 0. Keys match case-insensitively and inside form keys such as login[password]. Temporary until typed credentials stay out of Morrow Bridge for Muse plans, approvals, and receipts (THE-87)."
+  }
  },
  "source": "proof-battery/OPERATION_CATALOG.md plus the standing proof-directive exclusions. Parity law 2026-09-21: no tenant allowlists anywhere; nothing is gated by tenant.",
  "tenant_restricted_removed": {

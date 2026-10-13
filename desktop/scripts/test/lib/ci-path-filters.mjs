@@ -32,6 +32,7 @@ export const ROOT_FILE_READERS = Object.freeze({
   "README.md": { products: [], why: "only the repository text gates read it" },
   "SECURITY.md": { products: [], why: "only the repository text gates read it" },
   "docs/products.md": { products: [], why: "only the repository text gates read it" },
+  "docs/security/THE-28-credential-scan.md": { products: [], why: "only the repository text gates read it" },
 });
 
 /** Paths the product directories and the workflows own; everything else tracked is a root file. */

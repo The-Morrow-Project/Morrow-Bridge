@@ -17,7 +17,7 @@ The desktop architecture (ARCHITECTURE.md) is one local operations layer with th
 |---|---|---|---|
 | Desktop app (installer/, client-config) | Client config writing, MCP payload verification, bridge delivery, setup/repair flows, CLI (setup, mcp install, doctor, profile, catalog stats, backend status, operation get/reconcile/cancel) | content/setup-guide.md, consent.md, revoke.md; transport/onboarding_reauth.md; no installer, no CLI, no repair flow | Partial. The setup narrative exists as docs. There is no actual setup/repair program. |
 | MCP server (packages/mcp-server, 70+ tool files) | 1137-operation Canvas API catalog, on the order of 90 morrow_* tool registrations, frozen write plans, local approval server, operation journal with effect receipts, encrypted batch manifests, privacy projection with learner tokenization, result paging and evidence | dispatch/executor.py (manifest pipeline: frozen plans, journal, verify blocks, retry), provision/provision.py (LTI chain), 2 pinned manifest entries, catalog dispatch | Partial. The governance spine (frozen plans, journal, verify, retry, undo) crossed. The catalog shrank from 1137 ops to 2 pinned entries plus ad-hoc catalog dispatch with no admission gate. Learner tokenization did not cross. |
-| Bridge (connector/extension MV3 + canvas-connector-mcp) | Loopback protocol on 127.0.0.1:32147, pairing, CSRF handling, Item Bank frame execution, provider readback after writes, validated catalog digest/pairing secret/protocol version | transport/batch.py (browser-task briefs), session/cdp.py, session/capture.py, provision/provision.py CDP reads | Partial. Transport mechanics were rebuilt, not ported. The validation layer (pairing secret, catalog digest, protocol version, operation ID, source binding, command expiry) has no equivalent. |
+| Bridge (connector/extension MV3 + canvas-connector-mcp) | Loopback protocol on 127.0.0.1:32147, pairing, CSRF handling, Item Bank frame execution, provider readback after writes, validated catalog digest/pairing secret/protocol version | transport/batch.py (browser-task briefs), provision/provision.py CDP reads | Partial. Transport mechanics were rebuilt, not ported. The validation layer (pairing secret, catalog digest, protocol version, operation ID, source binding, command expiry) has no equivalent. |
 | Blackboard REST server (packages/blackboard-learn-api) | Anthology Learn REST operations (announcements, assignments, content patch, course contents, lifecycle, files, gradebook, groups, memberships, health) | Nothing | Missing, but the desktop side was live-untested on Blackboard and the Muse product does not claim Blackboard. Not a launch blocker. |
 
 ## What the Muse side has (verified by reading)
@@ -29,11 +29,11 @@ This is the complete Muse deploy surface, so gaps below can be checked against i
 - **pack/pack.json** (v0.2.4): 2 pinned entries (morrow_check_new_quiz, morrow_read_item_bank_fan_out). Credential slot declarations with inject/derive rules.
 - **provision/manifests/**: the quiz check entry JSON (`morrow_check_new_quiz`; the read-only fan-out entry was removed 2026-09-21, W3-P2-21; no write entries pinned).
 - **transport/batch.py, state.py, selftest.py**: browser-task brief renderer and result parser (GET by navigation, writes as form POSTs with authenticity_token harvest and _method overrides, max 15 ops per batch), lane metadata state (secrets refused by key pattern), 21-check selftest.
-- **session/capture.py, cdp.py**: rig-Chrome CDP capture (retired for the Muse lane per transport/README.md; left in place).
+- **session/capture.py, cdp.py**: Removed. The rig session capture read the Canvas session cookie and could replay it over raw HTTPS.
 - **lanes/detect.py**: Removed. The PAT lane probe and the QR OAuth proof are not in the repository. The session lane remains.
-- **reauth/state_machine.py**: Canvas re-auth machine (detect 401-unauthenticated / 302-to-login, write halt, quarantine ledger, notify.txt, guided re-sign-in with principal pinning, verified resume, per-action approval re-arm, simulated selftest).
+- **reauth/state_machine.py**: Canvas re-auth machine (detect 401-unauthenticated / 302-to-login, write halt, quarantine ledger, notify.txt, principal pinning, verified resume after manual sign-in, per-action approval re-arm).
 - **moodle/**: login.py (form bootstrap on the public sandbox), session.py (MoodleSession: AJAX dispatcher over lib/ajax/service.php, form-path fallback, classify_signal reauth/sesskey/provider, frozen-plan writes with verify, JSONL journal, used-op-id set), probe.py (read-only capability probe: version, function allowed_from_ajax classification, sesskey stability, unobservable deployment killers recorded as such), reauth.py (Moodle re-auth machine with live-signal characterization drill).
-- **bin/**: keepalive-canvas.sh, keepalive-moodle.sh, scheduler.py (userspace daemon, daily/6h). `smoke_bank_lifecycle.py` was removed 2026-09-21 (W3-P2-21); the SDK live battery is `proof-battery/item_bank_sdk_battery.py` (development-only test instrument, not shipped).
+- **bin/**: keepalive-moodle.sh, scheduler.py (userspace daemon, 6h). keepalive-canvas.sh was removed with the session capture. `smoke_bank_lifecycle.py` was removed 2026-09-21 (W3-P2-21); the SDK live battery is `proof-battery/item_bank_sdk_battery.py` (development-only test instrument, not shipped).
 - **content/**: consent.md, setup-guide.md, revoke.md (plain-language, with UNVERIFIED-BY-US markers on claims not yet live-verified).
 - **proof-battery/LEDGER.md**: the operation proof ledger (counts unverified; under separate audit).
 
@@ -81,7 +81,7 @@ This is the complete Muse deploy surface, so gaps below can be checked against i
 
 - The executor's governance spine is genuinely good: frozen plans, digest-pinned entries, write halt, uncertain-write journaling, no-blind-retry discipline, verify blocks, and undo-as-new-op are all real and read-verified.
 - The Moodle lane is better characterized than anything on the desktop side: per-function allowed_from_ajax probing, invalidsesskey vs dead-session separation, live-signal re-auth drill. The desktop Moodle modules have no equivalent drill.
-- The lane prober's kill-switch detection and the principal-pinning re-auth flow are thoughtful and live-grounded.
+- The principal-pinning re-auth flow is thoughtful and live-grounded.
 - Dropping the browser extension removes a real distribution and permission burden; the browser-task transport is a legitimate simplification, with the caveat in gap 4.
 
 ## Bottom line for Braden

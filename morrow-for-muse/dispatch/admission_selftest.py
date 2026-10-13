@@ -153,9 +153,12 @@ def write_entry(name="canvas_create_page", method="POST",
 def t_policy_shape():
     p = load_policy()
     assert p["version"] == "1.4.0", "policy version"
-    assert len(p["never_dispatch"]["tool_names"]) == 9, "9 never-dispatch tools"
+    assert len(p["never_dispatch"]["tool_names"]) == 10, "10 never-dispatch tools"
     assert sorted(p["never_dispatch"]["request_flags"]) == [
         "as_user_id", "is_announcement", "notify_of_update"]
+    assert sorted(p["never_dispatch"]["credential_keys"]["keys"]) == [
+        "access_code", "access_token", "client_secret", "consumer_key",
+        "old_password", "password", "private_key", "shared_secret"]
     assert "canvas_item_bank_get_item" in p["unsupported"]["tool_names"]
     assert "tenant_restricted" not in p, "no tenant allowlists anywhere"
     assert len(p["evidence_holds"]["tool_names"]) == 9, "9 evidence-held tools"

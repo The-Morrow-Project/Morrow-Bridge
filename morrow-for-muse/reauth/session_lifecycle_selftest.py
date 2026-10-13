@@ -22,10 +22,9 @@ Covers:
   W4-P2-3   expiry_horizon_warning(): helper /status horizon within
             ~24h warns; far/unknown/down never warns and never raises;
             cmd_status surfaces the horizon line.
-  W4-P2-5   stale session.json.prev: retained on failed/mismatched
-            recovery, deleted only after verified resume; a .prev older
-            than 7 days is aged out, and impose_halt sweeps a stale
-            .prev from an earlier incomplete cycle.
+  W4-P2-5   stale session.json.prev: a .prev older than 7 days is
+            aged out, and impose_halt sweeps a stale .prev from an
+            earlier incomplete cycle.
   W4-P2-4   PAT 401 taxonomy: the 401 branch of request_with_retry names
             the token cause and the mint-a-fresh-token remedy, and never
             claims more than the 401 proves.
@@ -138,27 +137,6 @@ def t_tree_id():
             check("tree-id: DuplicateOpId survives the move", True)
     finally:
         ex.JOURNAL_PATH = real_journal
-
-
-# ---------------------------------------------------------------- W4-P2-5
-
-def t_prev_retention():
-    prev = rsm.SESSION_PREV
-    rsm.impose_halt({"signal": "selftest"})
-    with open(prev, "w") as f:
-        f.write("superseded session record")
-    # Mismatched recovery: halt stays, .prev retained.
-    ok = rsm._complete_reauth({"id": 111}, {"id": 222})
-    check("prev: mismatch returns False", ok is False)
-    check("prev: retained after mismatch", os.path.exists(prev))
-    check("prev: halt still active after mismatch",
-          rsm.check_write_allowed()[0] is False)
-    # Verified recovery: halt lifted, .prev deleted.
-    ok = rsm._complete_reauth({"id": 111}, {"id": 111})
-    check("prev: match returns True", ok is True)
-    check("prev: deleted after verified resume", not os.path.exists(prev))
-    check("prev: halt lifted after verified resume",
-          rsm.check_write_allowed()[0] is True)
 
 
 # ---------------------------------------------------------------- W4-P2-5
@@ -687,7 +665,6 @@ def t_stale_command():
 
 def main():
     t_tree_id()
-    t_prev_retention()
     t_prev_ageout()
     t_session_death_quarantine()
     t_expiry_horizon()

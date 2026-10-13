@@ -27,10 +27,6 @@ Covers:
             genuinely stale .prev (old mono) is still aged out, and the
             .mono sidecar is removed with it. Legacy .prev files without
             a sidecar keep the old wall-clock behavior.
-  W5-P2-6  reauth() survives a hung capture.py: subprocess.TimeoutExpired
-            writes an escalation (plain language), prints a failure line,
-            returns False, and leaves the halt and .prev intact (state
-            stays reauth_pending; no traceback escapes).
 """
 import os as _home_os, sys as _home_sys  # noqa: E401
 _home_sys.path.insert(0, _home_os.path.join(
@@ -352,45 +348,6 @@ def t_prev_monotonic_reboot():
             pass
 
 
-# ---------------------------------------------------------------- W5-P2-6
-
-def t_reauth_timeout_escalates():
-    # Arrange an expired state with a readable dead session record.
-    rsm.set_state(rsm.EXPIRED)
-    with open(rsm.SESSION_PATH, "w", encoding="utf-8") as f:
-        json.dump({"canvas": {"principal": {"id": "42",
-                                            "name": "Test"}}}, f)
-    rsm.impose_halt("test death")
-    real_run = subprocess.run
-
-    def _hang(*args, **kwargs):
-        raise subprocess.TimeoutExpired(args[0], 120)
-
-    subprocess.run = _hang
-    try:
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            rc = rsm.reauth()
-        out = buf.getvalue()
-    finally:
-        subprocess.run = real_run
-    check("P2-6: hung capture.py makes reauth() return False (no raise)",
-          rc is False)
-    check("P2-6: plain-language escalation line printed",
-          "timed out" in out and "reauth_pending" in out, out[:120])
-    esc = open(rsm.NOTIFY_PATH, encoding="utf-8").read() \
-        if os.path.exists(rsm.NOTIFY_PATH) else ""
-    check("P2-6: escalation file names the hung capture",
-          "capture.py" in esc and "120s" in esc, esc[:120])
-    check("P2-6: write halt stays imposed (fail-safe state retained)",
-          rsm.is_write_halted())
-    check("P2-6: the .prev pinning snapshot is retained",
-          os.path.exists(rsm.SESSION_PREV))
-    check("P2-6: state stays reauth_pending",
-          rsm.get_state() == rsm.REAUTH_PENDING)
-    rsm.lift_halt()
-
-
 def t_ledger_concurrent_append():
     # W5-P1-2: concurrent CLI processes appending while compactions
     # fire must not lose entries. The ledger lock serializes each
@@ -440,8 +397,7 @@ for _t in (t_unique_default_op_id,
            t_ledger_concurrent_append,
            t_session_death_dedup,
            t_prev_monotonic_guard,
-           t_prev_monotonic_reboot,
-           t_reauth_timeout_escalates):
+           t_prev_monotonic_reboot):
     try:
         _t()
     except Exception as e:  # noqa: BLE001 - never let one test kill the suite

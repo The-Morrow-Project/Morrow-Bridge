@@ -25,8 +25,8 @@ sys.path.insert(0, HERE)
 import carve  # noqa: E402
 
 TREE_PACKAGES = ("catalog", "config", "dispatch", "failures", "helper",
-                 "learners", "modes", "privacy", "query", "reauth", "session",
-                 "settings", "transport")
+                 "learners", "modes", "privacy", "query", "reauth", "settings",
+                 "transport")
 
 
 def _write_shadows(root):

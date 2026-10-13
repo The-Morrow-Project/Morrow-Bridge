@@ -10,8 +10,8 @@ import { electronAsarReleaseIdentity, readElectronAsarPackage } from "../lib/ele
 import { runOwnedProcess } from "../lib/owned-process.mjs";
 import { bridgeReleaseManifest } from "../package-mcp-bundle.mjs";
 
-export const BRIDGE_VERSION = "1.0.139";
-export const BRIDGE_SEAL = "d11ded14fe6e58d0857779a1c15746d06627453005cec7d962ea125b6c86ddbf";
+export const BRIDGE_VERSION = "1.0.140";
+export const BRIDGE_SEAL = "f4955868d802c3cfaea575bf217a40f56bfb640523999ac94bbde9b89204726c";
 const DESKTOP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const EXTENSION_ID = "abeloclekioohahgedmjcdbpllfjfhko";
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");

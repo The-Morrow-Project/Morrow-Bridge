@@ -234,6 +234,7 @@ const REPOSITORY_GATES = [
   "desktop/scripts/test/no-em-dash.test.mjs",
   "desktop/scripts/test/product-claims.test.mjs",
   "desktop/scripts/test/repository-policy.test.mjs",
+  "desktop/scripts/test/no-borrowed-credentials.test.mjs",
   "desktop/scripts/test/ci-path-filters.test.mjs",
 ];
 

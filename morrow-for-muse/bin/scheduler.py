@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Morrow keepalive scheduler: runs the Canvas and Moodle keepalives.
+"""Morrow keepalive scheduler: runs the legacy Moodle keepalive.
 
-Canvas: once daily. The legacy Moodle entrypoint runs every 6 hours, but
+The Canvas keepalive is helper/keepalive.sh, supervised by cron or by
+helper/supervisor.py. The legacy Moodle entrypoint runs every 6 hours, but
 cannot restore a browser-owned session from JSON. It reports IDLE without
 a bundle and BLOCKED if a legacy bundle exists. An active in-memory
 MoodleSession can use moodle/keepalive.py instead.
@@ -13,7 +14,7 @@ Usage:
   scheduler.py start    # daemonize (writes pid file, logs to logs/)
   scheduler.py stop     # stop the daemon
   scheduler.py status   # check if running
-  scheduler.py run-once # run both keepalives immediately (for testing)
+  scheduler.py run-once # run the keepalive immediately (for testing)
 
 After a VM restart, re-run `scheduler.py start`. The pid file is stale-checked.
 """
@@ -31,10 +32,8 @@ LOG_DIR = os.path.join(DEPLOY_DIR, "logs")
 PID_FILE = os.path.join(DEPLOY_DIR, "logs", "scheduler.pid")
 SCHED_LOG = os.path.join(DEPLOY_DIR, "logs", "scheduler.log")
 
-CANVAS_SCRIPT = os.path.join(BIN_DIR, "keepalive-canvas.sh")
 MOODLE_SCRIPT = os.path.join(BIN_DIR, "keepalive-moodle.sh")
 
-CANVAS_INTERVAL = 24 * 3600   # daily
 MOODLE_INTERVAL = 6 * 3600    # every 6 hours
 
 # W5-P2-2: scheduler.log rotation. Copy-truncate (not rename) so the
@@ -100,25 +99,20 @@ def run_keepalive(name, script):
 
 
 def daemon_loop():
-    # Stagger first runs: Canvas in 60s (so a manual start proves quickly),
-    # Moodle in 120s. Then each on its own interval.
+    # First run in 120s, then on the interval.
     # W5-P2-1: interval math on the monotonic clock. Wall-clock jumps
     # (NTP step, VM suspend/resume) must not fire keepalives early or
     # stall them for hours.
-    next_canvas = time.monotonic() + 60
     next_moodle = time.monotonic() + 120
     log(f"scheduler started (pid {os.getpid()}); "
-        f"canvas every {CANVAS_INTERVAL}s, moodle every {MOODLE_INTERVAL}s")
+        f"moodle every {MOODLE_INTERVAL}s")
     while True:
         now = time.monotonic()
-        if now >= next_canvas:
-            run_keepalive("canvas", CANVAS_SCRIPT)
-            next_canvas = now + CANVAS_INTERVAL
         if now >= next_moodle:
             run_keepalive("moodle", MOODLE_SCRIPT)
             next_moodle = now + MOODLE_INTERVAL
         # Sleep until the next due time (capped at 60s for responsiveness).
-        wake = min(next_canvas, next_moodle)
+        wake = next_moodle
         time.sleep(max(1, min(60, wake - time.monotonic())))
 
 
@@ -236,7 +230,6 @@ def cmd_status():
 
 
 def cmd_run_once():
-    run_keepalive("canvas", CANVAS_SCRIPT)
     run_keepalive("moodle", MOODLE_SCRIPT)
 
 

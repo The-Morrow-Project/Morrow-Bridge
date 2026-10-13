@@ -112,7 +112,7 @@ check("re-auth write-halt owned by shipped state machine",
       "_on_session_death" in src_ex
       and "reauth" in src_ex
       and os.path.exists(os.path.join(REPO, "reauth", "state_machine.py")))
-check("re-auth: rig-only session/capture.py not wired into executor",
+check("re-auth: no session-capture module wired into executor",
       "from session" not in src_ex and "import session" not in src_ex
       and "session.capture" not in src_ex)
 
