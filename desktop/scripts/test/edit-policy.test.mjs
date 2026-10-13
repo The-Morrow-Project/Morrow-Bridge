@@ -235,3 +235,19 @@ test("the default Edit for a new course is a valid grant", async () => {
   const withCopy = await createEditPermission({ binding, catalogDigest: CATALOG_DIGEST, revision: 1, enabledCategories: ["action:moodle:moodle_copy_course"], operations: moodleOperations });
   assert.equal(matchesBridgeEditPermission(bridgeBinding(withCopy), { provider: "moodle", catalogDigest: CATALOG_DIGEST, operationKey: copy.key, toolName: copy.toolName, arguments: copyArgs }), true, "a grant that names the copy authorizes it, so the refusal above is the default's own");
 });
+
+test("the default Edit for a new Canvas course leaves out Item Bank changes that can reach other courses", () => {
+  const read = (name) => JSON.parse(readFileSync(new URL(`connector/extension/generated/${name}`, root), "utf8")).operations;
+  const canvasOperations = [...read("canvas-api-catalog.json").map((operation) => ({ ...operation, provider: "canvas" })), ...read("canvas-browser-catalog.json")];
+  const canvasOptions = categoriesForBinding({ provider: "canvas" }, canvasOperations);
+  const defaults = editPolicy.defaultEditCategoryIds(canvasOptions);
+  const bankOptions = canvasOptions.filter((entry) => entry.id.startsWith("action:canvas:canvas_item_bank_") && entry.availability === "edit" && !entry.destructive);
+  assert.ok(bankOptions.length > 1);
+  for (const entry of bankOptions) {
+    const toolName = entry.id.replace("action:canvas:", "");
+    const reachesOthers = Object.hasOwn(canvasOperations.find((operation) => operation.toolName === toolName)?.inputSchema?.properties || {}, "acknowledged_course_ids");
+    assert.equal(defaults.includes(entry.id), !reachesOthers, `${toolName} ${reachesOthers ? "can reach other courses" : "reaches only this course"}`);
+  }
+  assert.ok(defaults.includes("action:canvas:canvas_item_bank_create_bank"));
+  assert.ok(!defaults.includes("action:canvas:canvas_item_bank_share_bank"));
+});

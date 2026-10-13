@@ -1023,11 +1023,18 @@ export function categoriesForBinding(binding, operations) {
 // Copying a Moodle course creates a separate course on the site, outside the connected one. Its
 // catalog reach stays "course", because its source is the connected course, so the default names it.
 const DEFAULT_EDIT_EXCLUDED_CATEGORY_IDS = new Set(["action:moodle:moodle_copy_course"]);
+// A change to an existing Item Bank can reach every quiz, in every course, that draws from the bank,
+// and sharing one gives another course access to it. Canvas gives no complete list of those
+// courses, so each such change carries the person's acknowledgement of the courses Morrow observed.
+// Only creating a new bank, which no other course uses yet, joins the default.
+const DEFAULT_EDIT_ITEM_BANK_PREFIX = "action:canvas:canvas_item_bank_";
+const DEFAULT_EDIT_ITEM_BANK_ALLOWED = new Set(["action:canvas:canvas_item_bank_create_bank"]);
 
 export function defaultEditCategoryIds(categories) {
   return (Array.isArray(categories) ? categories : [])
     .filter((category) => category?.availability === "edit" && category.destructive !== true
       && !DEFAULT_EDIT_EXCLUDED_CATEGORY_IDS.has(category.id)
+      && (!String(category.id).startsWith(DEFAULT_EDIT_ITEM_BANK_PREFIX) || DEFAULT_EDIT_ITEM_BANK_ALLOWED.has(category.id))
       && category.verification !== "unchecked" && category.requiresFieldSelection !== true && category.reach !== "beyond")
     .map((category) => category.id)
     .sort();
