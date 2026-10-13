@@ -515,7 +515,14 @@ def _flag_is_false(value) -> bool:
     return False
 
 
-def _flag_set_in(value, flags) -> str | None:
+def _credential_is_empty(value) -> bool:
+    """True only for a value that carries no credential at all. Any other
+    value, "false" or "0" included, could be the secret itself."""
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
+def _flag_set_in(value, flags, inert=_flag_is_false,
+                 fold=False) -> str | None:
     """The first flag in flags that a query or body sets to anything but
     false, or None.
 
@@ -528,32 +535,35 @@ def _flag_set_in(value, flags) -> str | None:
         text = value.strip()
         if text[:1] in ("{", "["):
             try:
-                return _flag_set_in(json.loads(text), flags)
+                return _flag_set_in(json.loads(text), flags, inert, fold)
             except ValueError:
                 pass
         pairs = urllib.parse.parse_qsl(text.lstrip("?"),
                                        keep_blank_values=True)
-        return _flag_set_in([{k: v} for k, v in pairs], flags)
+        return _flag_set_in([{k: v} for k, v in pairs], flags, inert, fold)
     if isinstance(value, list):
         for item in value:
-            hit = _flag_set_in(item, flags)
+            hit = _flag_set_in(item, flags, inert, fold)
             if hit:
                 return hit
         return None
     if isinstance(value, dict):
         for key, child in value.items():
             parts = _FORM_KEY_PART_RE.findall(str(key))
+            if fold:
+                parts = [p.lower() for p in parts]
             flag = next((p for p in parts if p in flags), None)
-            if flag and not _flag_is_false(child):
+            if flag and not inert(child):
                 return flag
             if isinstance(child, (dict, list)):
-                hit = _flag_set_in(child, flags)
+                hit = _flag_set_in(child, flags, inert, fold)
                 if hit:
                     return hit
     return None
 
 
-def _request_flag_hit(entry: dict, flags) -> str | None:
+def _request_flag_hit(entry: dict, flags, inert=_flag_is_false,
+                      fold=False) -> str | None:
     """The first never-dispatch request flag any request block of the
     entry sets: in its query, its body, or its URL's own query string."""
     if not flags:
@@ -567,7 +577,7 @@ def _request_flag_hit(entry: dict, flags) -> str | None:
                 continue
             url_query = urllib.parse.urlsplit(str(block["url"])).query
             for part in (block.get("query"), block.get("body"), url_query):
-                hit = _flag_set_in(part, flags) if part else None
+                hit = _flag_set_in(part, flags, inert, fold) if part else None
                 if hit:
                     return hit
     return None
@@ -640,6 +650,16 @@ def check_never_dispatch(entry: dict, policy: dict) -> None:
         raise _never_dispatch_refusal(
             "operation %r sets %s, which %s. Nothing was sent."
             % (name, flag, flags[flag]), entry)
+    # A typed credential is refused whatever its value looks like: "false"
+    # or "0" can be the secret itself, so presence is the test.
+    credentials = nd.get("credential_keys") or {}
+    keys = {str(k).lower() for k in credentials.get("keys") or []}
+    key = _request_flag_hit(entry, keys, _credential_is_empty, fold=True)
+    if key:
+        raise _never_dispatch_refusal(
+            "operation %r sets %s, which %s. Nothing was sent."
+            % (name, key, credentials.get("reason", "is a typed credential")),
+            entry)
 
 
 def check_unsupported(entry: dict, policy: dict) -> None:

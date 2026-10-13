@@ -1363,6 +1363,7 @@ DEFAULT_REDACT_PATTERNS = [
     "access_token", "refresh_token", "id_token", "token",
     "secret", "password", "passwd", "credential",
     "api_key", "apikey", "client_secret", "private_key", "consumer_key",
+    "access_code",
     "cookie", "session", "authorization",
 ]
 
