@@ -260,7 +260,14 @@
   "request_flags": {
    "is_announcement": "posts an announcement and notifies every student in the course; Morrow Bridge for Muse never posts announcements, even when asked",
    "notify_of_update": "sends every student in the course a notice about the change; Morrow Bridge for Muse never sends messages to people, even when asked",
-   "as_user_id": "makes Canvas act as another person (masquerading); Morrow Bridge for Muse never acts as anyone other than you, even when asked"
+   "as_user_id": "makes Canvas act as another person (masquerading); Morrow Bridge for Muse never acts as anyone other than you, even when asked",
+   "password": "carries a password or a tool's key or secret that you type, and Morrow Bridge for Muse would keep a copy in its plan and approval files; it is refused until typed credentials are kept out of them (THE-87). Make this change in Canvas itself",
+   "old_password": "carries a password or a tool's key or secret that you type, and Morrow Bridge for Muse would keep a copy in its plan and approval files; it is refused until typed credentials are kept out of them (THE-87). Make this change in Canvas itself",
+   "consumer_key": "carries a password or a tool's key or secret that you type, and Morrow Bridge for Muse would keep a copy in its plan and approval files; it is refused until typed credentials are kept out of them (THE-87). Make this change in Canvas itself",
+   "shared_secret": "carries a password or a tool's key or secret that you type, and Morrow Bridge for Muse would keep a copy in its plan and approval files; it is refused until typed credentials are kept out of them (THE-87). Make this change in Canvas itself",
+   "client_secret": "carries a password or a tool's key or secret that you type, and Morrow Bridge for Muse would keep a copy in its plan and approval files; it is refused until typed credentials are kept out of them (THE-87). Make this change in Canvas itself",
+   "access_token": "carries a password or a tool's key or secret that you type, and Morrow Bridge for Muse would keep a copy in its plan and approval files; it is refused until typed credentials are kept out of them (THE-87). Make this change in Canvas itself",
+   "private_key": "carries a password or a tool's key or secret that you type, and Morrow Bridge for Muse would keep a copy in its plan and approval files; it is refused until typed credentials are kept out of them (THE-87). Make this change in Canvas itself"
   },
   "request_flags_note": "A request whose query, body, or URL query sets one of these keys to anything Canvas does not read as false is refused on every route and every lane, before approval, with no override. The catalog's excluded set names the announcement variants of discussion create; the flag rule covers every route that accepts it, the topic update included. notify_of_update rides on assignment, page, and classic quiz create and edit; as_user_id (masquerading) rides on any route, a read included. The consent page lists all three under what Morrow will not do in this version, even if you ask."
  },

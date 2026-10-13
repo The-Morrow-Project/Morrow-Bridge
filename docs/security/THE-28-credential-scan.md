@@ -77,7 +77,7 @@ the helper's own tab and copies no cookie, so no working personal-mode flow used
 
 ### Canvas writes held because they mint, regenerate, or return a credential
 
-No shipped Morrow feature calls any of these. They were generic catalog operations. Morrow PM decided on 2026-10-12 to hold all of them. `canvas_add_observee_with_credentials` stays admitted: it checks credentials the person supplies and mints none.
+No shipped Morrow feature calls any of these. They were generic catalog operations. Morrow PM decided on 2026-10-12 to hold all of them.
 
 | Group | Tool | Route |
 |---|---|---|
@@ -119,7 +119,9 @@ Where the typed value leaked (code at `2902860b`, proved with fake values agains
 | Error text | A Canvas error that quotes the value passes through (`service-worker.js:6261`; Muse `failures/translator.py:100`) |
 | Morrow Bridge for Muse, `canvas_create_external_tool_courses` | Approval display and 0600 plan and approval files keep all three fields; receipts redact `shared_secret` but not `consumer_key` or `client_id` |
 
-The desktop admission holds all 6 with reason `receives_a_credential`. Morrow Bridge for Muse adds `canvas_create_external_tool_courses` to its never-dispatch list (`dispatch/admission_policy.json`); its catalog does not carry the other 5, so they are already refused. Follow-up: THE-87.
+The desktop admission holds all 6 with reason `receives_a_credential`. Morrow Bridge for Muse adds `canvas_create_external_tool_courses` to its never-dispatch list (`dispatch/admission_policy.json`); its catalog does not carry the other 5, so they are already refused.
+
+Morrow Bridge for Muse also refuses a typed credential on every route, temporarily, until THE-87. Round 4 found that the live-proven external tool edit (`canvas_edit_external_tool_courses`, which Canvas lets take create fields) still rendered and saved `consumer_key` and `shared_secret`. Rather than hold the whole edit, `never_dispatch.request_flags` now refuses any request whose body or query sets `password`, `old_password`, `consumer_key`, `shared_secret`, `client_secret`, `access_token`, or `private_key`, before the plan is rendered or saved. Renaming a tool or changing its URL still runs. Receipts now also mask `consumer_key` (`dispatch/executor.py` `DEFAULT_REDACT_PATTERNS`). THE-87 lifts both holds once typed credentials stay out of Morrow's records.
 
 ## Scan commands and output
 
