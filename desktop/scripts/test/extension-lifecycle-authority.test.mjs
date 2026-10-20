@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import nodeTest from "node:test";
 import { clearExtensionGlobals, loadExtensionPage } from "./lib/extension-dom.mjs";
+import { defaultEditCategoryIds } from "../../connector/extension/src/edit-policy.js";
 
 const root = new URL("../../", import.meta.url);
 const extensionId = "a".repeat(32);
@@ -1641,6 +1642,139 @@ async function connectionWritesCourseMetaScenario() {
   });
 }
 
+function selectionReceipt(receiptId, courses) {
+  return {
+    schema: "morrow.course-discovery.v1",
+    discoveryReceiptId: receiptId,
+    siteAnchorId: anchorId,
+    provider: "canvas",
+    origin: courseOrigin,
+    principalFingerprint: "f".repeat(64),
+    sessionGeneration: 1,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 60_000,
+    snapshotDigest: "d".repeat(64),
+    courses,
+    pageNumber: 1,
+    visited: [`${courseOrigin}/api/v1/courses?per_page=100`],
+    complete: true,
+    next: null,
+  };
+}
+
+function courseCheck(courses) {
+  return async ({ message }) => {
+    if (message?.type === "morrow_canvas_probe") return { ok: true, profile: { origin: courseOrigin, id: "7" } };
+    if (message?.type === "morrow_canvas_check_course") {
+      const course = courses.find((candidate) => candidate.id === String(message.courseId));
+      return course ? { ok: true, profile: { origin: courseOrigin, id: "7" }, course } : null;
+    }
+    return null;
+  };
+}
+
+async function newCourseStartsInEditScenario() {
+  const value = fixture({ tabMessage: courseCheck([{ id: "43", name: "Chemistry" }]) });
+  const receiptId = "discovery:new-course-edit";
+  value.session.values.courseDiscoveries = { [receiptId]: selectionReceipt(receiptId, [{ id: "43", name: "Chemistry" }]) };
+  await importWorker("new-course-edit");
+  const result = await sendRuntime(value, { type: "morrow_course_selection_save", siteAnchorId: anchorId, discoveryReceiptId: receiptId, courseIds: ["43"] }, settingsSender());
+  assert.equal(result.ok, true, JSON.stringify(result));
+  const newId = `${anchorId}:c43`;
+  const permission = value.local.values.editPolicies[newId];
+  assert.ok(permission, "a newly allowed course starts with Edit");
+  assert.equal(permission.revision, 1);
+  assert.equal(permission.expiresAt, undefined, "default Edit has no end time");
+  assert.equal(value.local.values.editPolicyRevisions[newId], 1);
+  const options = await sendRuntime(value, { type: "morrow_edit_policy_options", sourceBindingId: newId }, settingsSender());
+  assert.equal(options.ok, true, JSON.stringify(options));
+  const categories = options.result.options;
+  assert.deepEqual(permission.enabledCategories, defaultEditCategoryIds(categories));
+  const byId = new Map(categories.map((category) => [category.id, category]));
+  for (const id of permission.enabledCategories) {
+    const category = byId.get(id);
+    assert.equal(category.availability, "edit", id);
+    assert.notEqual(category.destructive, true, `${id} removes content and needs its own confirmation`);
+    assert.notEqual(category.reach, "beyond", `${id} reaches beyond the course`);
+    assert.notEqual(category.verification, "unchecked", `${id} cannot be checked after it is saved`);
+  }
+  assert.ok(categories.some((category) => category.availability === "edit" && category.destructive === true), "the catalog has removal actions the default leaves out");
+  assert.equal(result.result.bindings[0].editPermission?.scopeDigest, permission.scopeDigest);
+  assert.equal(value.local.values.editPolicies[bindingId], undefined, "a course already connected in Plan stays in Plan");
+  const status = await sendRuntime(value, { type: "morrow_edit_policy_status" }, settingsSender());
+  assert.equal(status.ok, true, JSON.stringify(status));
+  const published = status.result.bindings.find((binding) => binding.sourceBindingId === newId);
+  assert.equal(published.allCourseEdits, true);
+  assert.equal(published.editPermission.scopeDigest, permission.scopeDigest, "the published binding carries the valid default grant");
+  assert.equal(status.result.bindings.find((binding) => binding.sourceBindingId === bindingId).editPermission, undefined);
+}
+
+async function recordedPlanCourseStaysInPlanScenario() {
+  const value = fixture({ tabMessage: courseCheck([{ id: "43", name: "Chemistry" }]) });
+  const newId = `${anchorId}:c43`;
+  // A recorded revision with no grant: the person returned this connection to Plan, or disconnected
+  // it, before. Allowing it again must not widen it.
+  value.local.values.editPolicyRevisions = { [newId]: 3 };
+  const receiptId = "discovery:recorded-plan";
+  value.session.values.courseDiscoveries = { [receiptId]: selectionReceipt(receiptId, [{ id: "43", name: "Chemistry" }]) };
+  await importWorker("recorded-plan-course");
+  const result = await sendRuntime(value, { type: "morrow_course_selection_save", siteAnchorId: anchorId, discoveryReceiptId: receiptId, courseIds: ["43"] }, settingsSender());
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(value.local.values.editPolicies[newId], undefined);
+  assert.equal(value.local.values.editPolicyRevisions[newId], 3);
+  assert.equal(result.result.bindings[0].editPermission, undefined);
+}
+
+async function repairedAccountKeepsPlanScenario() {
+  const value = fixture({ tabMessage: courseCheck([{ id: "43", name: "Chemistry" }]) });
+  // The person set course 43 to Plan, disconnected it, and paired the same account again, so its
+  // revision is under the earlier anchor of this account. Other accounts and other courses do not count.
+  value.local.values.editPolicyRevisions = { "canvas:account:g0:c43": 2 };
+  const receiptId = "discovery:repaired-account";
+  value.session.values.courseDiscoveries = { [receiptId]: selectionReceipt(receiptId, [{ id: "43", name: "Chemistry" }]) };
+  await importWorker("repaired-account-plan");
+  const result = await sendRuntime(value, { type: "morrow_course_selection_save", siteAnchorId: anchorId, discoveryReceiptId: receiptId, courseIds: ["43"] }, settingsSender());
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(value.local.values.editPolicies[`${anchorId}:c43`], undefined);
+  assert.equal(result.result.bindings[0].editPermission, undefined);
+}
+
+async function otherAccountHistoryIgnoredScenario() {
+  const value = fixture({ tabMessage: courseCheck([{ id: "43", name: "Chemistry" }]) });
+  value.local.values.editPolicyRevisions = { "canvas:other:g1:c43": 2, "canvas:account:g0:c143": 4 };
+  const receiptId = "discovery:other-account";
+  value.session.values.courseDiscoveries = { [receiptId]: selectionReceipt(receiptId, [{ id: "43", name: "Chemistry" }]) };
+  await importWorker("other-account-history");
+  const result = await sendRuntime(value, { type: "morrow_course_selection_save", siteAnchorId: anchorId, discoveryReceiptId: receiptId, courseIds: ["43"] }, settingsSender());
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.ok(value.local.values.editPolicies[`${anchorId}:c43`], "another account's or another course's history does not keep this course in Plan");
+}
+
+async function accountCourseStartsInPlanScenario() {
+  const value = fixture({
+    tabMessage: async ({ message }) => {
+      if (message?.type === "morrow_canvas_probe") return { ok: true, profile: { origin: courseOrigin, id: "7" } };
+      if (message?.type === "morrow_canvas_list_courses") {
+        return {
+          ok: true,
+          profile: { origin: courseOrigin, id: "7" },
+          courses: [{ id: "42", name: "Biology" }, { id: "44", name: "Physics" }],
+          pageUrl: `${courseOrigin}/api/v1/courses?per_page=100`,
+          nextUrl: null,
+          complete: true,
+        };
+      }
+      return null;
+    },
+  });
+  await importWorker("account-course-plan");
+  const result = await sendRuntime(value, { type: "morrow_course_access_set", mode: "account" }, settingsSender());
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(result.result.courseCount, 2);
+  assert.deepEqual(value.local.values.editPolicies, {}, "Account access adds courses in Plan");
+  assert.equal(value.local.values.editPolicyRevisions[`${anchorId}:c44`], undefined);
+}
+
 async function settingsPolicyConsentScenario() {
   let holdProbe = false;
   let probeStarted = false;
@@ -2197,6 +2331,11 @@ const scenarios = {
   "discovery-optional-fields": discoveryOptionalFieldsScenario,
   "discovery-unknown-field-refused": discoveryUnknownFieldRefusedScenario,
   "connection-writes-course-meta": connectionWritesCourseMetaScenario,
+  "new-course-edit": newCourseStartsInEditScenario,
+  "recorded-plan-course": recordedPlanCourseStaysInPlanScenario,
+  "account-course-plan": accountCourseStartsInPlanScenario,
+  "repaired-account-plan": repairedAccountKeepsPlanScenario,
+  "other-account-history": otherAccountHistoryIgnoredScenario,
   "settings-selection-consent": settingsSelectionConsentScenario,
   "settings-policy-consent": settingsPolicyConsentScenario,
   "pairing-proof": pairingProofScenario,
@@ -2272,6 +2411,26 @@ async function isolatedScenario(name) {
   assert.equal(result.stderr, "");
   assert.equal(result.stdout, `${name}: ok\n`);
 }
+
+test("a newly allowed course starts in Edit with every course edit except removal, beyond-course, and unchecked actions", async () => {
+  await isolatedScenario("new-course-edit");
+});
+
+test("allowing a course again keeps the Plan it had before", async () => {
+  await isolatedScenario("recorded-plan-course");
+});
+
+test("a course set before under an earlier pairing of the same account keeps Plan", async () => {
+  await isolatedScenario("repaired-account-plan");
+});
+
+test("another account's or another course's history does not keep a new course in Plan", async () => {
+  await isolatedScenario("other-account-history");
+});
+
+test("a course that Account access adds stays in Plan", async () => {
+  await isolatedScenario("account-course-plan");
+});
 
 test("consent withdrawal fences a Bridge connection still loading its catalog", async () => {
   await isolatedScenario("consent-connect");

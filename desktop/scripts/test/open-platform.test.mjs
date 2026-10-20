@@ -89,6 +89,7 @@ function harness({ anchors = [], bindings = [], matchResult = true, matchResults
     "const state = { courseDataAuthorityGeneration: 0, operations: new Map() };",
     "async function requireCourseDataAuthority() {}",
     "async function catalog() { return { catalogDigest: 'digest-1' }; }",
+    "function catalogOperations() { return Object.freeze([...state.operations.values()]); }",
     "function queueStorageMutation(work) { return work(); }",
     "function storedPolicies(value) { return value || {}; }",
     "function storedPolicyRevisions(value) { return value || {}; }",
