@@ -27,6 +27,10 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TREE = os.path.dirname(HERE)
 
+# The default port as install.sh prints or calls it. A bare "8901" can
+# also match a per-run path or hash in the output.
+DEFAULT_PORT = re.compile(r"127\.0\.0\.1:8901\b|port 8901\b")
+
 FAKE_CURL = """#!/bin/bash
 printf '%s\\n' "$*" >> "${FAKE_CURL_LOG}"
 out=""
@@ -139,7 +143,7 @@ def test_a_healthy_helper_is_checked_on_the_pinned_port(world):
     assert "helper healthy" in out, out
     calls = world["curl_log"].read_text()
     assert "http://127.0.0.1:18911/status" in calls, calls
-    assert "8901" not in calls, calls
+    assert not DEFAULT_PORT.search(calls), calls
 
 
 @pytest.mark.parametrize("base,confirmation,allowed", [
@@ -176,7 +180,7 @@ def test_the_sign_in_notice_names_the_pinned_port(world):
     out = proc.stdout + proc.stderr
     assert "SIGN-IN NEEDED" in out, out
     assert "http://127.0.0.1:18911/" in out, out
-    assert "8901" not in out, out
+    assert not DEFAULT_PORT.search(out), out
 
 
 def test_lock_skip_with_verified_signed_out_helper_shows_sign_in(world):
